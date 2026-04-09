@@ -1,0 +1,95 @@
+# Claude Code Configuration
+# Global settings for l1br3-prompt development
+
+project:
+  name: l1br3-prompt
+  description: Local-first prompt management tool for AI
+  url: https://github.com/yourusername/l1br3-prompt
+
+# Agent defaults
+agents:
+  default_model: claude-sonnet-4-6
+  planning_model: claude-opus-4-6
+  temperature: 0.7
+
+# Development directories
+paths:
+  backend: backend/
+  frontend: l1br3-prompt/
+  docs: .claude/docs/
+  tests: tests/
+
+# Commands and shortcuts
+commands:
+  dev: cd l1br3-prompt && npm run dev
+  test: npm run test
+  lint: npm run lint
+  build: npm run build
+
+# Performance targets (from spec)
+performance:
+  sidebar_open_ms: 200
+  prompt_copy_ms: 50
+  suggestion_display_ms: 150
+  idle_memory_mb: 150
+
+# Tech stack
+stack:
+  backend:
+    - FastAPI
+    - SQLAlchemy
+    - Pydantic v2
+    - Alembic
+    - asyncio
+  frontend:
+    - React 18+
+    - TypeScript
+    - Tailwind CSS
+    - Tiptap
+    - WXT
+  optional:
+    - Ollama (local AI)
+    - Supabase (cloud sync)
+    - Cloudflare Workers (cloud AI proxy)
+
+# Hooks (if configured)
+hooks:
+  pre_commit:
+    - Run security checks
+    - Lint and format
+  post_edit:
+    - Format code
+    - Update imports
+  quality_gate:
+    - Run tests
+    - Check coverage
+
+# Rules and standards
+standards:
+  - Follow code-style.md
+  - No hardcoded secrets
+  - All endpoints documented
+  - Tested code required
+  - Accessible UI components
+
+# Documentation
+docs:
+  spec: l1br3-prompt-Specification.md
+  architecture: .claude/docs/architecture.md
+  api_reference: backend/openapi.json
+  guides:
+    - .claude/docs/setup.md
+    - .claude/docs/contributing.md
+
+# Security
+security:
+  rules:
+    - security.md
+    - python/security.md
+    - typescript/security.md
+  checklist:
+    - No hardcoded secrets
+    - Input validation
+    - SQL injection prevention
+    - XSS prevention
+    - Rate limiting
