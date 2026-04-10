@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { streamGenerate, processTemplate } from '../lib/api';
+import { streamGenerate, QuotaExceededError, processTemplate } from '../lib/api';
 import { composePromptFor } from '../lib/compose';
 import {
   Save,
@@ -29,7 +29,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppConfig } from '../contexts/AppConfig';
 
 export function ComposeTab() {
-  const { config } = useAppConfig();
+  const { config, updateConfig } = useAppConfig();
   const [title, setTitle] = useState('');
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [detectedVars, setDetectedVars] = useState<string[]>([]);
@@ -37,6 +37,7 @@ export function ComposeTab() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [preview, setPreview] = useState('');
+  const [quotaError, setQuotaError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const suggestRef = useRef<HTMLDivElement>(null);
   const enabledActions = config.quickActions.filter((a) => a.enabled);
@@ -172,7 +173,8 @@ export function ComposeTab() {
       }
 
       const model = config.ai.selectedModel;
-      if (!model || !config.backend.isInstalled) {
+      const cloudAvailable = config.ai.cloudEnabled && !!config.ai.deviceId;
+      if ((!model && !cloudAvailable) || !config.backend.isInstalled) {
         handleInsertText(action.insertText); // Fallback: insert static text
         return;
       }
@@ -180,6 +182,7 @@ export function ComposeTab() {
       const prompt = composePromptFor(action, editor?.getText() ?? '');
       abortRef.current = new AbortController();
       setIsStreaming(true);
+      setQuotaError(null);
       try {
         await streamGenerate(
           config.backend.url,
@@ -188,9 +191,21 @@ export function ComposeTab() {
             editor?.chain().focus().insertContent(chunk).run();
           },
           abortRef.current.signal,
+          {
+            deviceId: config.ai.deviceId,
+            cloudEnabled: config.ai.cloudEnabled,
+            onMeta: (meta) => {
+              updateConfig({ ai: { ...config.ai, activeProvider: meta.provider } });
+            },
+          },
         );
       } catch (err) {
-        if (err instanceof Error && err.name !== 'AbortError') {
+        if (err instanceof QuotaExceededError) {
+          const resetAt = err.resetAt
+            ? new Date(err.resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : 'tomorrow';
+          setQuotaError(`Cloud quota exhausted, resets at ${resetAt}. Install Ollama for unlimited local AI.`);
+        } else if (err instanceof Error && err.name !== 'AbortError') {
           // Non-cancel errors: insert static text as fallback
           handleInsertText(action.insertText);
         }
@@ -227,6 +242,15 @@ export function ComposeTab() {
           </button>
         </div>
       </div>
+
+      {quotaError && (
+        <div className="mx-4 mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-start gap-2">
+          <span className="text-amber-400 text-[10px] leading-relaxed">{quotaError}</span>
+          <button onClick={() => setQuotaError(null)} className="ml-auto text-amber-500/60 hover:text-amber-400 shrink-0">
+            <X size={12} />
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5 pb-20">
         {/* Title */}

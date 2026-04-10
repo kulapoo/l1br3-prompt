@@ -1,4 +1,6 @@
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Table, Column
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Table, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, UUIDMixin, TimestampMixin
@@ -21,6 +23,7 @@ class Prompt(UUIDMixin, TimestampMixin, Base):
     usage_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_used: Mapped[str | None] = mapped_column(String, nullable=True)
     is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
     tags: Mapped[list[Tag]] = relationship(
         Tag, secondary=prompt_tags, lazy="selectin"

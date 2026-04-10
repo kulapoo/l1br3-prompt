@@ -42,6 +42,7 @@ export interface GenerateRequest {
   prompt: string;
   model?: string | null;
   options?: Record<string, unknown> | null;
+  cloudEnabled?: boolean;
 }
 
 export interface ProcessTemplateResponse {
@@ -54,5 +55,11 @@ export interface AiStatus {
     reachable: boolean;
     models: string[];
   };
-  provider: 'ollama' | null;
+  cloud?: {
+    reachable: boolean;
+    quotaRemaining: number;
+    quotaTotal: number;
+    resetAt: string | null;
+  };
+  provider: 'ollama' | 'cloud' | null;
 }

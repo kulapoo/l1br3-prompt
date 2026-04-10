@@ -145,10 +145,9 @@ WS     /ws                          # Real-time connection (local only)
 | 1 | Local Backend Foundation | Week 1-2 | ✅ Complete |
 | 2 | Sidebar UI | Week 3-4 | 🔵 In Progress |
 | 3 | Context-Aware Suggestions | Week 5-6 | ⬜ Upcoming |
-| 4 | Local AI Integration | Week 7-8 | ⬜ Upcoming |
-| 5 | Optional Cloud Sync | Week 9-10 | ⬜ Upcoming |
-| 6 | Free Cloud AI Fallback | Week 11-12 | ⬜ Upcoming |
-| 7 | Cross-Platform & Polish | Week 13-14 | ⬜ Upcoming |
+| 4 | Local AI Integration | Week 7-8 | ✅ Complete |
+| 5 | Optional Cloud Sync | Week 9-10 | 🔵 In Progress |
+| 6 | Free Cloud AI Fallback | Week 11-12 | 🔵 In Progress |
 
 ### Phase 1: Local Backend Foundation
 - FastAPI + SQLite + SQLAlchemy with FTS5
@@ -182,11 +181,6 @@ WS     /ws                          # Real-time connection (local only)
 - Cloudflare Worker + Groq/Gemini
 - Extension settings for cloud AI
 - Rate limiting and quota management
-
-### Phase 7: Cross-Platform & Polish
-- Desktop shell (Electron or Tauri)
-- React Native mobile app
-- Performance optimization and testing
 
 ---
 

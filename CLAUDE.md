@@ -4,48 +4,87 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-l1br3-prompt (codenamed "l1br3-prompt") — a local-first prompt management tool for storing, composing, and getting AI-powered suggestions for prompts. The MVP is a browser extension sidebar; the full product spec is in `l1br3-prompt-Specification.md`.
+l1br3-prompt — a local-first prompt management tool for storing, composing, and getting AI-powered suggestions for prompts. Ships as a browser extension sidebar (Chrome/Firefox). All data stays on the user's machine; cloud sync via Supabase is optional.
 
-Currently only the **frontend prototype** exists in `l1br3-prompt/`. There is no backend yet (spec calls for a FastAPI + SQLite Python backend).
+Full product spec: `requirements.md`
+
+## Repository Layout
+
+```
+l1br3-prompt/
+├── api/                    # Python FastAPI backend (Phase 1 ✅ complete)
+│   ├── app/
+│   │   ├── main.py         # Entry point — binds to 127.0.0.1:8000
+│   │   ├── models/         # SQLAlchemy ORM models
+│   │   ├── schemas/        # Pydantic v2 request/response schemas
+│   │   ├── routes/         # REST endpoints
+│   │   ├── repositories/   # Data access layer (repository pattern)
+│   │   └── services/       # Business logic
+│   ├── migrations/         # Alembic migrations
+│   └── tests/              # pytest suite (73 tests, all passing)
+├── browser-ext/            # WXT/React browser extension (Phase 2 🔵 in progress)
+│   ├── components/         # Tab components (Compose, Prompts, Suggestions, Settings, Sidebar)
+│   ├── contexts/           # AppConfig React context (global state)
+│   ├── entrypoints/        # WXT entry points (sidepanel, background, content)
+│   ├── hooks/              # Custom React hooks
+│   ├── lib/                # API client, storage, sync utilities
+│   └── types/              # TypeScript types
+├── Justfile                # Task runner (just dev, just test, just build)
+└── requirements.md         # Full product specification
+```
 
 ## Commands
 
-All commands run from `l1br3-prompt/`:
+All commands use `just` from the repo root:
 
 ```bash
-cd l1br3-prompt
-npm install          # install dependencies
-npm run dev          # start Vite dev server
-npm run build        # production build
-npm run lint         # ESLint (JS/TS/TSX)
-npm run preview      # preview production build
+just dev          # start API (localhost:8000) + extension dev server
+just dev-api      # API only
+just dev-ext      # extension dev server (Chrome)
+just dev-ext-ff   # extension dev server (Firefox)
+just test         # run API tests (pytest)
+just lint         # lint both API (ruff) and extension (tsc)
+just build        # build API + Chrome extension
+just clean        # remove build artifacts
+```
+
+Or run directly:
+
+```bash
+# API
+cd api && uv run python -m app.main
+
+# Extension
+cd browser-ext && npm run dev
 ```
 
 ## Architecture
 
-### Frontend (`l1br3-prompt/`)
+### Backend (`api/`)
 
-React + TypeScript + Vite + Tailwind CSS. No routing library — view switching is handled via `AppConfig` context.
+Python 3.12+ / FastAPI / SQLite + SQLAlchemy 2 / Alembic / Pydantic v2.
 
-**Three view modes** controlled by `AppConfig.viewMode`:
-- `sidebar` — 400px panel simulating a Chrome extension Side Panel (default)
-- `admin` — full-width 3-column layout (Prompts | Compose | Suggestions) with slide-over Settings
-- `docs` — renders the product spec
+All responses use the `ApiResponse[T]` envelope: `{ success, data, error, metadata }`.
 
-**Tab components** (shared between sidebar and admin modes):
-- `ComposeTab` — Tiptap rich text editor with quick-action modifiers and `{{variable}}` support
-- `PromptsTab` — prompt library with search, filter, favorites, and inline CRUD
-- `SuggestionsTab` — AI suggestion panels (currently mock data)
-- `SettingsTab` — backend/AI/sync configuration
+Endpoints: prompts CRUD, `/suggest` (rule-based + optional Ollama), `/generate` (SSE stream), `/process-template`, `/ai/status`, `/health`. Binds to `127.0.0.1` only (never exposed to internet).
 
-**State management**: `AppConfigProvider` (React Context in `src/contexts/AppConfig.tsx`) holds all app config including backend connection status, AI settings, sync state, and quick actions. No external state library.
+### Browser Extension (`browser-ext/`)
 
-**Key libraries**: Tiptap (rich text), framer-motion (animations), lucide-react (icons), Emotion (CSS-in-JS, minimal usage — Tailwind is primary).
+WXT + React 19 + TypeScript + Tailwind CSS 4. Chrome Side Panel API + Firefox sidebar_action. Keyboard shortcut: `Ctrl+Shift+Y`.
 
-### Data
+**Global state**: `AppConfigProvider` (React Context, `contexts/AppConfig.tsx`) — backend connection, AI settings, sync state, quick-actions. Persisted to `browser.storage.local`.
 
-All data is currently mock (`src/mockData.ts`). Types are in `src/types.ts`. The `QuickAction` type in `AppConfig.tsx` supports multiple sources: local, API, MCP, and Ollama.
+**Tab components**: `ComposeTab` (Tiptap editor + variables + modifiers), `PromptsTab` (prompt library), `SuggestionsTab` (AI suggestions), `SettingsTab` (backend/AI/sync config).
 
-### Planned Backend (not yet built)
+**Entry points**: `sidepanel` (main UI), `background` (opens side panel, broadcasts TAB_CHANGED), `content` (context detection + text injection into ChatGPT/Claude/Gemini).
 
-Python 3.11+ / FastAPI / SQLite+SQLAlchemy / Alembic. API spec is in `l1br3-prompt-Specification.md` section 5. Will bind to `localhost:8000`.
+### Phases
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 1 | Local Backend (FastAPI + SQLite) | ✅ Complete |
+| 2 | Browser Extension Sidebar (MVP UI) | 🔵 In Progress |
+| 3 | Context-Aware Suggestions | ⬜ Upcoming |
+| 4 | Local AI Integration (Ollama) | ✅ Complete |
+| 5 | Optional Cloud Sync (Supabase) | 🔵 In Progress |
+| 6 | Free Cloud AI Fallback | ✅ Complete |

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
@@ -37,3 +39,6 @@ class PromptResponse(BaseModel):
     usage_count: int = Field(serialization_alias="usageCount")
     last_used: str | None = Field(None, serialization_alias="lastUsed")
     is_favorite: bool = Field(serialization_alias="isFavorite")
+    created_at: datetime = Field(serialization_alias="createdAt")
+    updated_at: datetime = Field(serialization_alias="updatedAt")
+    deleted_at: datetime | None = Field(None, serialization_alias="deletedAt")

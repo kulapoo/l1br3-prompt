@@ -12,8 +12,15 @@ import { SuggestionsTab } from './SuggestionsTab';
 import { ComposeTab } from './ComposeTab';
 import { SettingsTab } from './SettingsTab';
 import { StatusBar } from './StatusBar';
+import { useBackendHealth } from '../hooks/useBackendHealth';
+import { useCloudQuota } from '../hooks/useCloudQuota';
 
 export function Sidebar() {
+  // Live-detect the local backend so config.backend.isInstalled reflects
+  // reality rather than a stored toggle.
+  useBackendHealth();
+  // Background quota polling for cloud AI fallback.
+  useCloudQuota();
   const [activeTab, setActiveTab] = useState<TabType>('compose');
   const tabs = [
   {

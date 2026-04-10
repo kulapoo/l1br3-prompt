@@ -23,34 +23,49 @@ export function StatusBar() {
         </div>
 
         <div
-        className={`flex items-center gap-1.5 ${config.sync.enabled && config.sync.isAuthenticated ? 'text-blue-400' : 'opacity-60'}`}
+        className={`flex items-center gap-1.5 ${config.sync.enabled && config.sync.userId !== null ? 'text-blue-400' : 'opacity-60'}`}
         title="Cloud Sync Status">
 
-          {config.sync.enabled && config.sync.isAuthenticated ?
+          {config.sync.enabled && config.sync.userId !== null ?
         <Cloud size={10} /> :
 
         <CloudOff size={10} />
         }
-          {config.sync.enabled && config.sync.isAuthenticated ?
-        'Synced' :
+          {config.sync.enabled && config.sync.userId !== null ?
+        (config.sync.syncStatus === 'syncing' ? 'Syncing…' : 'Synced') :
         'No Sync'}
         </div>
       </div>
 
       <div
-      className={`flex items-center gap-1.5 ${config.ai.localConnected || config.ai.cloudEnabled ? 'text-indigo-400' : 'text-amber-500'}`}
-      title="AI Status">
-
-        {config.ai.localConnected || config.ai.cloudEnabled ?
-      <Zap size={10} /> :
-
-      <ZapOff size={10} />
-      }
-        {config.ai.localConnected ?
-      'Ollama Ready' :
-      config.ai.cloudEnabled ?
-      'Cloud AI Ready' :
-      'AI Offline'}
+      className={`flex items-center gap-1.5 ${
+        config.ai.activeProvider === 'cloud'
+          ? 'text-amber-400'
+          : config.ai.localConnected || config.ai.cloudEnabled
+            ? 'text-indigo-400'
+            : 'text-slate-500'
+      }`}
+      title={
+        config.ai.activeProvider === 'ollama'
+          ? 'Using local Ollama'
+          : config.ai.activeProvider === 'cloud'
+            ? 'Using cloud AI fallback (Groq/Gemini)'
+            : config.ai.localConnected
+              ? 'Ollama ready'
+              : config.ai.cloudEnabled
+                ? 'Cloud AI fallback enabled'
+                : 'No AI provider available'
+      }>
+        {config.ai.localConnected || config.ai.cloudEnabled ? <Zap size={10} /> : <ZapOff size={10} />}
+        {config.ai.activeProvider === 'ollama'
+          ? 'Ollama'
+          : config.ai.activeProvider === 'cloud'
+            ? 'Cloud AI'
+            : config.ai.localConnected
+              ? 'Ollama Ready'
+              : config.ai.cloudEnabled
+                ? 'Cloud AI Ready'
+                : 'AI Offline'}
       </div>
     </div>;
 

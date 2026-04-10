@@ -20,6 +20,7 @@ def list_prompts(
     tag: str | None = None,
     category: str | None = None,
     favorite: bool | None = None,
+    include_deleted: bool = False,
     page: int = 1,
     limit: int = 20,
     db: Session = Depends(get_db),
@@ -30,6 +31,7 @@ def list_prompts(
         tag=tag,
         category=category,
         is_favorite=favorite,
+        include_deleted=include_deleted,
         page=page,
         limit=limit,
     )

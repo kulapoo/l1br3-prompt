@@ -1,17 +1,60 @@
 import type { AiStatus, GenerateRequest, ProcessTemplateResponse, Suggestion, SuggestContext } from '../types'
 
+/** Thrown when the cloud provider returns a quota_exceeded error frame. */
+export class QuotaExceededError extends Error {
+  readonly resetAt: string | null
+  constructor(resetAt: string | null) {
+    super(`Cloud quota exhausted${resetAt ? `, resets at ${resetAt}` : ''}`)
+    this.name = 'QuotaExceededError'
+    this.resetAt = resetAt
+  }
+}
+
 interface ApiResponse<T> {
   success: boolean
   data: T | null
   error: string | null
 }
 
+// ── Health ────────────────────────────────────────────────────────────────────
+
+const PING_TIMEOUT_MS = 2000
+
+/**
+ * Probe the local backend's /health endpoint. Returns true iff the backend
+ * responded with a successful envelope within PING_TIMEOUT_MS.
+ *
+ * Never throws — network failure, timeout, and bad responses all return false.
+ * This is the negative result, not an exceptional case.
+ */
+export async function pingBackend(baseUrl: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${baseUrl}/api/v1/health`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(PING_TIMEOUT_MS),
+    })
+    if (!res.ok) return false
+    const json = (await res.json()) as ApiResponse<{ status?: string }>
+    return json.success === true
+  } catch {
+    return false
+  }
+}
+
 // ── Suggestions ───────────────────────────────────────────────────────────────
 
-export async function fetchSuggestions(baseUrl: string, ctx: SuggestContext): Promise<Suggestion[]> {
+export async function fetchSuggestions(
+  baseUrl: string,
+  ctx: SuggestContext,
+  opts?: { deviceId?: string | null; cloudEnabled?: boolean },
+): Promise<Suggestion[]> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (opts?.deviceId) headers['X-Device-Id'] = opts.deviceId
+  if (opts?.cloudEnabled) headers['X-Cloud-Enabled'] = 'true'
+
   const res = await fetch(`${baseUrl}/api/v1/suggest`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(ctx),
   })
   if (!res.ok) {
@@ -26,8 +69,19 @@ export async function fetchSuggestions(baseUrl: string, ctx: SuggestContext): Pr
 
 // ── AI status ─────────────────────────────────────────────────────────────────
 
-export async function fetchAiStatus(baseUrl: string): Promise<AiStatus> {
-  const res = await fetch(`${baseUrl}/api/v1/ai/status`)
+export async function fetchAiStatus(
+  baseUrl: string,
+  opts?: { deviceId?: string | null; includeCloud?: boolean },
+): Promise<AiStatus> {
+  const url = new URL(`${baseUrl}/api/v1/ai/status`)
+  if (opts?.includeCloud && opts?.deviceId) {
+    url.searchParams.set('cloud', 'true')
+  }
+
+  const headers: Record<string, string> = {}
+  if (opts?.deviceId) headers['X-Device-Id'] = opts.deviceId
+
+  const res = await fetch(url.toString(), { headers })
   if (!res.ok) throw new Error(`AI status request failed: ${res.statusText}`)
   const json: ApiResponse<AiStatus> = await res.json()
   if (!json.success || !json.data) throw new Error(json.error ?? 'Unknown error')
@@ -39,19 +93,34 @@ export async function fetchAiStatus(baseUrl: string): Promise<AiStatus> {
 /**
  * Stream an AI-generated response via SSE.
  *
- * Calls onChunk for each text fragment. Returns when the stream is done
- * or the AbortSignal fires.
+ * Calls onChunk for each text fragment and optionally onMeta when the server
+ * reports which provider is serving the request. Throws QuotaExceededError on
+ * cloud quota exhaustion. Returns when the stream is done or the AbortSignal
+ * fires.
  */
 export async function streamGenerate(
   baseUrl: string,
   request: GenerateRequest,
   onChunk: (chunk: string) => void,
   signal?: AbortSignal,
+  opts?: {
+    deviceId?: string | null
+    cloudEnabled?: boolean
+    onMeta?: (meta: { provider: 'ollama' | 'cloud' }) => void
+  },
 ): Promise<void> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (opts?.deviceId) headers['X-Device-Id'] = opts.deviceId
+
+  const body: GenerateRequest = {
+    ...request,
+    cloudEnabled: opts?.cloudEnabled ?? false,
+  }
+
   const res = await fetch(`${baseUrl}/api/v1/generate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
+    headers,
+    body: JSON.stringify(body),
     signal,
   })
   if (!res.ok) {
@@ -78,10 +147,25 @@ export async function streamGenerate(
       const raw = line.slice(6).trim()
       if (!raw) continue
       try {
-        const data = JSON.parse(raw) as { chunk?: string; done?: boolean; error?: string }
-        if (data.error) throw new Error(data.error)
+        const data = JSON.parse(raw) as {
+          chunk?: string
+          done?: boolean
+          error?: string
+          meta?: { provider?: string }
+          resetAt?: string
+        }
+        if (data.error) {
+          if (data.error === 'quota_exceeded') {
+            throw new QuotaExceededError(data.resetAt ?? null)
+          }
+          throw new Error(data.error)
+        }
         if (data.done) return
         if (data.chunk) onChunk(data.chunk)
+        if (data.meta?.provider && opts?.onMeta) {
+          const provider = data.meta.provider === 'ollama' ? 'ollama' : 'cloud'
+          opts.onMeta({ provider })
+        }
       } catch (err) {
         if (err instanceof SyntaxError) continue // malformed frame — skip
         throw err

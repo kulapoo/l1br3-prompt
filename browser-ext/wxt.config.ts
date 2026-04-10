@@ -5,7 +5,7 @@ export default defineConfig({
   manifest: {
     name: 'l1br3-prompt',
     description: 'Local-first prompt management for AI chat',
-    permissions: ['sidePanel', 'storage', 'activeTab', 'scripting'],
+    permissions: ['sidePanel', 'storage', 'activeTab', 'scripting', 'identity', 'alarms'],
     action: {},
     commands: {
       '_execute_action': {

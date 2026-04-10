@@ -14,7 +14,6 @@ A local-first prompt management tool — store, organize, compose, and get AI-po
 | 4 | Local AI Integration (Ollama) | ⬜ Upcoming |
 | 5 | Optional Cloud Sync (Supabase) | ⬜ Upcoming |
 | 6 | Free Cloud AI Fallback | ⬜ Upcoming |
-| 7 | Cross-Platform & Polish | ⬜ Upcoming |
 
 ## Tech Stack
 

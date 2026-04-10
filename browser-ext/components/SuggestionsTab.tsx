@@ -36,7 +36,11 @@ export function SuggestionsTab() {
     setIsLoading(true);
     setError(null);
     try {
-      const results = await fetchSuggestions(config.backend.url, { ...ctx, useAi });
+      const results = await fetchSuggestions(
+        config.backend.url,
+        { ...ctx, useAi },
+        { deviceId: config.ai.deviceId, cloudEnabled: config.ai.cloudEnabled },
+      );
       setSuggestions(results);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch suggestions');

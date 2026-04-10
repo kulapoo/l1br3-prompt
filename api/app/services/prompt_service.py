@@ -18,6 +18,7 @@ class PromptService:
         tag: str | None = None,
         category: str | None = None,
         is_favorite: bool | None = None,
+        include_deleted: bool = False,
         page: int = 1,
         limit: int = 20,
     ) -> tuple[list[Prompt], int]:
@@ -26,6 +27,7 @@ class PromptService:
             tag=tag,
             category=category,
             is_favorite=is_favorite,
+            include_deleted=include_deleted,
             page=page,
             limit=limit,
         )
@@ -54,7 +56,16 @@ class PromptService:
         prompt = self.prompt_repo.find_by_id(id)
         if not prompt:
             return False
-        self.prompt_repo.delete(prompt)
+        self.prompt_repo.soft_delete(prompt)
+        self.db.commit()
+        return True
+
+    def hard_delete_prompt(self, id: str) -> bool:
+        """Permanently remove a prompt (used by sync after tombstone is pushed to cloud)."""
+        prompt = self.prompt_repo.find_by_id(id, include_deleted=True)
+        if not prompt:
+            return False
+        self.prompt_repo.hard_delete(prompt)
         self.db.commit()
         return True
 

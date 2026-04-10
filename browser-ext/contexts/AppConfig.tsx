@@ -1,4 +1,5 @@
-import React, { useState, createContext, useContext } from 'react';
+import React, { useState, createContext, useContext, useEffect } from 'react';
+import { loadConfig, saveConfig } from '../lib/storage';
 
 export type QuickActionSource =
 {
@@ -28,6 +29,8 @@ export interface QuickAction {
   source: QuickActionSource;
 }
 
+export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
+
 export interface AppConfig {
   backend: {
     isInstalled: boolean;
@@ -37,13 +40,23 @@ export interface AppConfig {
     localConnected: boolean;
     cloudEnabled: boolean;
     cloudQuotaRemaining: number;
+    cloudQuotaTotal: number;
+    cloudQuotaResetAt: string | null;
+    activeProvider: 'ollama' | 'cloud' | null;
     selectedModel: string | null;
     availableModels: string[];
+    deviceId: string | null;
   };
   sync: {
     enabled: boolean;
+    supabaseUrl: string;
+    supabaseAnonKey: string;
+    userId: string | null;
+    accessToken: string | null;
+    refreshToken: string | null;
     lastSyncTime: string | null;
-    isAuthenticated: boolean;
+    syncStatus: SyncStatus;
+    syncError: string | null;
   };
   viewMode: 'sidebar' | 'admin' | 'docs';
   quickActions: QuickAction[];
@@ -53,6 +66,7 @@ interface AppConfigContextType {
   config: AppConfig;
   setConfig: React.Dispatch<React.SetStateAction<AppConfig>>;
   updateConfig: (updates: Partial<AppConfig>) => void;
+  updateSync: (updates: Partial<AppConfig['sync']>) => void;
 }
 
 const defaultQuickActions: QuickAction[] = [
@@ -119,7 +133,7 @@ const defaultQuickActions: QuickAction[] = [
   }
 }];
 
-const defaultConfig: AppConfig = {
+export const defaultConfig: AppConfig = {
   backend: {
     isInstalled: false,
     url: 'http://localhost:8000'
@@ -128,13 +142,23 @@ const defaultConfig: AppConfig = {
     localConnected: false,
     cloudEnabled: false,
     cloudQuotaRemaining: 50,
+    cloudQuotaTotal: 50,
+    cloudQuotaResetAt: null,
+    activeProvider: null,
     selectedModel: null,
     availableModels: [],
+    deviceId: null,
   },
   sync: {
     enabled: false,
+    supabaseUrl: '',
+    supabaseAnonKey: '',
+    userId: null,
+    accessToken: null,
+    refreshToken: null,
     lastSyncTime: null,
-    isAuthenticated: false
+    syncStatus: 'idle',
+    syncError: null,
   },
   viewMode: 'sidebar',
   quickActions: defaultQuickActions
@@ -146,18 +170,52 @@ const AppConfigContext = createContext<AppConfigContextType | undefined>(
 
 export function AppConfigProvider({ children }: {children: React.ReactNode;}) {
   const [config, setConfig] = useState<AppConfig>(defaultConfig);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Hydrate from browser.storage.local on mount
+  useEffect(() => {
+    loadConfig(defaultConfig).then((saved) => {
+      setConfig(saved);
+      setHydrated(true);
+    });
+  }, []);
+
+  // Persist to browser.storage.local whenever config changes (after hydration)
+  useEffect(() => {
+    if (!hydrated) return;
+    saveConfig(config);
+  }, [config, hydrated]);
+
+  // Generate a stable anonymous device ID on first launch (used for cloud AI quota).
+  useEffect(() => {
+    if (!hydrated) return;
+    if (config.ai.deviceId) return;
+    const id = crypto.randomUUID();
+    setConfig((prev) => ({ ...prev, ai: { ...prev.ai, deviceId: id } }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
+
   const updateConfig = (updates: Partial<AppConfig>) => {
     setConfig((prev) => ({
       ...prev,
       ...updates
     }));
   };
+
+  const updateSync = (updates: Partial<AppConfig['sync']>) => {
+    setConfig((prev) => ({
+      ...prev,
+      sync: { ...prev.sync, ...updates }
+    }));
+  };
+
   return (
     <AppConfigContext.Provider
       value={{
         config,
         setConfig,
-        updateConfig
+        updateConfig,
+        updateSync,
       }}>
       {children}
     </AppConfigContext.Provider>);

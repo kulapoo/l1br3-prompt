@@ -18,6 +18,7 @@ class PromptRepository:
         tag: str | None = None,
         category: str | None = None,
         is_favorite: bool | None = None,
+        include_deleted: bool = False,
         page: int = 1,
         limit: int = 20,
     ) -> tuple[list[Prompt], int]:
@@ -36,6 +37,8 @@ class PromptRepository:
         else:
             query = self.db.query(Prompt)
 
+        if not include_deleted:
+            query = query.filter(Prompt.deleted_at.is_(None))
         if category:
             query = query.filter(Prompt.category == category)
         if is_favorite is not None:
@@ -48,8 +51,11 @@ class PromptRepository:
         items = query.offset(offset).limit(limit).all()
         return items, total
 
-    def find_by_id(self, id: str) -> Prompt | None:
-        return self.db.query(Prompt).filter(Prompt.id == id).first()
+    def find_by_id(self, id: str, include_deleted: bool = False) -> Prompt | None:
+        query = self.db.query(Prompt).filter(Prompt.id == id)
+        if not include_deleted:
+            query = query.filter(Prompt.deleted_at.is_(None))
+        return query.first()
 
     def create(self, data: PromptCreate, tags: list[Tag]) -> Prompt:
         prompt = Prompt(
@@ -79,7 +85,11 @@ class PromptRepository:
         self.db.refresh(prompt)
         return prompt
 
-    def delete(self, prompt: Prompt) -> None:
+    def soft_delete(self, prompt: Prompt) -> None:
+        prompt.deleted_at = datetime.now(timezone.utc)
+        self.db.flush()
+
+    def hard_delete(self, prompt: Prompt) -> None:
         self.db.delete(prompt)
         self.db.flush()
 

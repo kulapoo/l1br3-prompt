@@ -1,0 +1,16 @@
+name = "l1br3-cloud-ai"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "placeholder-replace-after-wrangler-kv-namespace-create"
+preview_id = "placeholder-replace-after-wrangler-kv-namespace-create"
+
+[vars]
+DAILY_QUOTA = "50"
+IP_DAILY_QUOTA = "200"
+DEFAULT_GROQ_MODEL = "llama3-8b-8192"
+DEFAULT_GEMINI_MODEL = "gemini-1.5-flash"
