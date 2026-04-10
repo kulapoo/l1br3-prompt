@@ -69,14 +69,35 @@ install-api:
 install-ext:
     cd browser-ext && npm install
 
+# Install pre-commit hooks
+install-hooks:
+    pre-commit install
+
 # ── Lint ──────────────────────────────────────────────────────────────────────
 
 # Lint everything
-lint: lint-ext
+lint: lint-ext lint-api
 
 # Type-check browser extension
 lint-ext:
     cd browser-ext && npm run compile
+
+# Lint API (Python)
+lint-api:
+    cd api && uv run ruff check .
+
+# ── Format ────────────────────────────────────────────────────────────────────
+
+# Format everything
+format: format-ext format-api
+
+# Format browser extension (Prettier)
+format-ext:
+    cd browser-ext && npm run format
+
+# Format API (Python)
+format-api:
+    cd api && uv run ruff format .
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
 

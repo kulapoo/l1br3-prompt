@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { streamGenerate, processTemplate } from '../lib/api';
+import { composePromptFor } from '../lib/compose';
 import {
   Save,
   X,
@@ -17,6 +19,7 @@ import {
   Quote,
   ListOrdered,
   Minus,
+  RefreshCw,
   SlidersHorizontal } from
 'lucide-react';
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -32,6 +35,9 @@ export function ComposeTab() {
   const [detectedVars, setDetectedVars] = useState<string[]>([]);
   const [isCopied, setIsCopied] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [preview, setPreview] = useState('');
+  const abortRef = useRef<AbortController | null>(null);
   const suggestRef = useRef<HTMLDivElement>(null);
   const enabledActions = config.quickActions.filter((a) => a.enabled);
 
@@ -115,9 +121,19 @@ export function ComposeTab() {
     }
   };
 
-  const generatePreview = () => {
+  const generatePreview = useCallback(async () => {
     if (!editor) return '';
-    let preview = editor.getText();
+    const text = editor.getText();
+    // Use backend template processing when the template has Jinja2 control structures
+    if (config.backend.isInstalled && (text.includes('{%') || text.includes('{#'))) {
+      try {
+        const result = await processTemplate(config.backend.url, text, variables);
+        return result.rendered;
+      } catch {
+        // Fall through to client-side substitution on error
+      }
+    }
+    let preview = text;
     detectedVars.forEach((v) => {
       const value = variables[v];
       const regex = new RegExp(`\\{\\{\\s*${v}\\s*\\}\\}`, 'g');
@@ -126,19 +142,68 @@ export function ComposeTab() {
       }
     });
     return preview;
-  };
+  }, [editor, detectedVars, variables, config.backend.isInstalled, config.backend.url]);
 
-  const handleCopy = () => {
-    const preview = generatePreview();
+  // Keep the live preview in sync with the editor content and variables
+  useEffect(() => {
+    generatePreview().then(setPreview);
+  }, [generatePreview]);
+
+  const handleCopy = async () => {
+    const preview = await generatePreview();
     if (!preview) return;
     navigator.clipboard.writeText(preview);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  const handleModifierAction = (action: (typeof config.quickActions)[0]) => {
-    handleInsertText(action.insertText);
+  const handleModifierAction = async (action: (typeof config.quickActions)[0]) => {
     setShowSuggestions(false);
+
+    if (action.source.type === 'ollama') {
+      // Cancel any in-flight stream before starting a new one
+      if (abortRef.current) {
+        abortRef.current.abort();
+      }
+      if (isStreaming) {
+        // Second click cancels the current stream
+        setIsStreaming(false);
+        return;
+      }
+
+      const model = config.ai.selectedModel;
+      if (!model || !config.backend.isInstalled) {
+        handleInsertText(action.insertText); // Fallback: insert static text
+        return;
+      }
+
+      const prompt = composePromptFor(action, editor?.getText() ?? '');
+      abortRef.current = new AbortController();
+      setIsStreaming(true);
+      try {
+        await streamGenerate(
+          config.backend.url,
+          { prompt, model },
+          (chunk) => {
+            editor?.chain().focus().insertContent(chunk).run();
+          },
+          abortRef.current.signal,
+        );
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') {
+          // Non-cancel errors: insert static text as fallback
+          handleInsertText(action.insertText);
+        }
+      } finally {
+        setIsStreaming(false);
+        abortRef.current = null;
+      }
+      return;
+    }
+
+    // 'local' source — insert static text
+    // 'api' and 'mcp' sources are TODO for Phase 5/6
+    handleInsertText(action.insertText);
   };
 
   const editorText = editor?.getText() || '';
@@ -297,11 +362,18 @@ export function ComposeTab() {
                     onClick={() => setShowSuggestions(!showSuggestions)}
                     className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-all text-[10px] font-medium border ${showSuggestions ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20'}`}>
 
-                    <SlidersHorizontal size={12} /> Modifiers{' '}
-                    <ChevronDown
-                      size={10}
-                      className={`transition-transform ${showSuggestions ? 'rotate-180' : ''}`} />
-
+                    {isStreaming ? (
+                      <>
+                        <RefreshCw size={12} className="animate-spin" /> Generating…
+                      </>
+                    ) : (
+                      <>
+                        <SlidersHorizontal size={12} /> Modifiers{' '}
+                        <ChevronDown
+                          size={10}
+                          className={`transition-transform ${showSuggestions ? 'rotate-180' : ''}`} />
+                      </>
+                    )}
                   </button>
 
                   <AnimatePresence>
@@ -418,7 +490,7 @@ export function ComposeTab() {
           <div className="bg-slate-950 border-l-2 border-indigo-500 border-r border-t border-b border-r-slate-800 border-t-slate-800 border-b-slate-800 rounded-lg p-3 min-h-[80px]">
             {editorText ?
             <pre className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">
-                {generatePreview()}
+                {preview}
               </pre> :
 
             <span className="text-xs text-slate-600 italic">

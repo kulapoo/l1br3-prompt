@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { fetchAiStatus } from '../lib/api';
 import {
   Cloud,
   Database,
@@ -107,6 +108,29 @@ export function SettingsTab() {
   const { config, updateConfig } = useAppConfig();
   const [editingAction, setEditingAction] = useState<QuickAction | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Fetch available Ollama models whenever the backend becomes connected
+  useEffect(() => {
+    if (!config.backend.isInstalled) return;
+    fetchAiStatus(config.backend.url)
+      .then((status) => {
+        updateConfig({
+          ai: {
+            ...config.ai,
+            availableModels: status.ollama.models,
+            selectedModel:
+              config.ai.selectedModel && status.ollama.models.includes(config.ai.selectedModel)
+                ? config.ai.selectedModel
+                : status.ollama.models[0] ?? null,
+          },
+        });
+      })
+      .catch(() => {
+        // Ollama not running — clear model list but don't surface an error
+        updateConfig({ ai: { ...config.ai, availableModels: [], selectedModel: null } });
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.backend.isInstalled, config.backend.url]);
 
   const handleToggleBackend = () => {
     updateConfig({
@@ -247,11 +271,29 @@ export function SettingsTab() {
                 <label className="block text-xs text-slate-500 mb-1.5">
                   Active Model
                 </label>
-                <select className="w-full bg-slate-950 border border-slate-800 rounded-md px-2 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500">
-                  <option>llama3:8b</option>
-                  <option>mistral:latest</option>
-                  <option>phi3:mini</option>
-                </select>
+                {config.ai.availableModels.length > 0 ? (
+                  <select
+                    value={config.ai.selectedModel ?? ''}
+                    onChange={(e) =>
+                      updateConfig({ ai: { ...config.ai, selectedModel: e.target.value } })
+                    }
+                    className="w-full bg-slate-950 border border-slate-800 rounded-md px-2 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
+                  >
+                    {config.ai.availableModels.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-xs text-amber-500/80">
+                    No models found.{' '}
+                    <span className="underline cursor-pointer" onClick={() =>
+                      window.open('https://ollama.com', '_blank')
+                    }>
+                      Install Ollama
+                    </span>{' '}
+                    and run <code className="font-mono">ollama pull llama3:8b</code>.
+                  </p>
+                )}
               </div>
             </div>
 

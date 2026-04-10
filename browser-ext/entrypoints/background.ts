@@ -19,4 +19,9 @@ export default defineBackground(() => {
       chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {})
     }
   })
+
+  // Notify sidebar when the active tab changes so it can refresh suggestions
+  browser.tabs.onActivated.addListener(() => {
+    browser.runtime.sendMessage({ type: 'TAB_CHANGED' }).catch(() => {})
+  })
 })

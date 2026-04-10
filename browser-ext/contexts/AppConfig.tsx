@@ -37,6 +37,8 @@ export interface AppConfig {
     localConnected: boolean;
     cloudEnabled: boolean;
     cloudQuotaRemaining: number;
+    selectedModel: string | null;
+    availableModels: string[];
   };
   sync: {
     enabled: boolean;
@@ -125,7 +127,9 @@ const defaultConfig: AppConfig = {
   ai: {
     localConnected: false,
     cloudEnabled: false,
-    cloudQuotaRemaining: 50
+    cloudQuotaRemaining: 50,
+    selectedModel: null,
+    availableModels: [],
   },
   sync: {
     enabled: false,

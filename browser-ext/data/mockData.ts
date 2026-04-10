@@ -89,24 +89,33 @@ export const MOCK_PROMPTS: Prompt[] = [
 export const MOCK_SUGGESTIONS: Suggestion[] = [
 {
   id: 's1',
+  promptId: 'mock-p1',
   title: 'Improve PR Description',
   description:
   'Detected a GitHub PR. Add a structured summary and testing steps to your prompt.',
   actionText: 'Apply PR Template',
   originalText: 'Review this PR',
   suggestedText:
-  'Review this PR. Please structure your response with: 1. High-level summary 2. Potential risks 3. Testing recommendations.'
+  'Review this PR. Please structure your response with: 1. High-level summary 2. Potential risks 3. Testing recommendations.',
+  score: 3.0,
+  rule: 'url_pattern',
 },
 {
   id: 's2',
+  promptId: 'mock-p2',
   title: 'Make it Concise',
   description:
   'The selected text is quite long. Wrap it in a prompt to summarize it.',
-  actionText: 'Wrap in Summarize'
+  actionText: 'Wrap in Summarize',
+  score: 2.0,
+  rule: 'selected_text',
 },
 {
   id: 's3',
+  promptId: 'mock-p3',
   title: 'Extract Action Items',
   description: 'Detected an email thread. Extract tasks and assignees.',
-  actionText: 'Apply Extraction'
+  actionText: 'Apply Extraction',
+  score: 1.5,
+  rule: 'url_pattern',
 }];

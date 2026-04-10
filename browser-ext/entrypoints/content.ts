@@ -29,6 +29,15 @@ export default defineContentScript({
     })
 
     browser.runtime.onMessage.addListener((message: { type: string; text?: string }) => {
+      if (message.type === 'GET_PAGE_CONTEXT') {
+        return Promise.resolve({
+          url: location.href,
+          pageTitle: document.title,
+          selectedText: window.getSelection()?.toString() || undefined,
+          pageContent: document.body.innerText.slice(0, 500),
+        })
+      }
+
       if (message.type === 'INSERT_TEXT' && message.text) {
         const input = activeInput || getActiveInput()
         if (input) {
