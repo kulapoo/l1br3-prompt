@@ -88,3 +88,25 @@ WXT + React 19 + TypeScript + Tailwind CSS 4. Chrome Side Panel API + Firefox si
 | 4 | Local AI Integration (Ollama) | ✅ Complete |
 | 5 | Optional Cloud Sync (Supabase) | 🔵 In Progress |
 | 6 | Free Cloud AI Fallback | ✅ Complete |
+
+### Planning Workflow
+
+The `.claude/` harness includes a planning toolchain for agile development:
+
+```
+/sprint-plan  →  /capability  →  /plan  →  /tdd  →  /verify  →  /sprint-update
+  (phases)       (features)     (steps)    (code)   (quality)    (persist status)
+```
+
+| Command | Purpose |
+|---------|---------|
+| `/sprint-plan` | Decompose a phase into sprints with features and acceptance criteria |
+| `/capability` | Deep-dive a feature into constraints, interfaces, and open questions |
+| `/plan` | Create step-by-step implementation plan (waits for confirmation) |
+| `/tdd` | Test-driven development (RED-GREEN-REFACTOR) |
+| `/verify` | Build, test, lint, typecheck verification loop |
+| `/sprint-update` | Persist feature status (in-progress / completed / blocked) into the sprint plan |
+| `/sprint-status` | Read the current sprint plan (no writes) |
+| `/pr-review` | Code review (local changes or GitHub PR) |
+
+Supporting skills: `product-capability`, `strategic-compact`, `project-flow-ops`

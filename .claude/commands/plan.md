@@ -107,11 +107,14 @@ After planning:
 - Use `/build-fix` if build errors occur
 - Use `/code-review` to review completed implementation
 
-> **Need deeper planning?** Use `/prp-plan` for artifact-producing planning with PRD integration, codebase analysis, and pattern extraction. Use `/prp-implement` to execute those plans with rigorous validation loops.
+> **Need deeper planning?** Use `/capability` to decompose a phase or feature
+> into a capability plan before implementation planning. Use `/sprint-plan` to
+> break a phase into structured sprints.
 
-## Related Agents
+## Related
 
-This command invokes the `planner` agent provided by ECC.
-
-For manual installs, the source file lives at:
-`agents/planner.md`
+- `agents/planner.yaml` — The planner agent definition
+- `/capability` — Capability planning (constraints, interfaces, open questions)
+- `/sprint-plan` — Sprint decomposition (features, acceptance criteria, definition of done)
+- `/tdd` — Test-driven development after planning
+- `/verify` — Build/test/lint verification loop

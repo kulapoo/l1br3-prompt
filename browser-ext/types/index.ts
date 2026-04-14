@@ -13,9 +13,21 @@ export interface Prompt {
   tags: Tag[];
   category: string;
   usageCount: number;
-  lastUsed: string;
+  lastUsed: string | null;
   isFavorite: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+export interface PromptCreate {
+  title: string;
+  content: string;
+  category?: string;
+  isFavorite?: boolean;
+  tags?: Array<{ name: string }>;
+}
+
+export type PromptUpdate = Partial<PromptCreate>;
 
 export interface Suggestion {
   id: string;

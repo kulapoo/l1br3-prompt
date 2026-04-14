@@ -1,4 +1,4 @@
-import type { AiStatus, GenerateRequest, ProcessTemplateResponse, Suggestion, SuggestContext } from '../types'
+import type { AiStatus, GenerateRequest, ProcessTemplateResponse, Prompt, PromptCreate, PromptUpdate, Suggestion, SuggestContext, Tag } from '../types'
 
 /** Thrown when the cloud provider returns a quota_exceeded error frame. */
 export class QuotaExceededError extends Error {
@@ -14,6 +14,7 @@ interface ApiResponse<T> {
   success: boolean
   data: T | null
   error: string | null
+  metadata?: { total: number; page: number; limit: number } | null
 }
 
 // ── Health ────────────────────────────────────────────────────────────────────
@@ -172,6 +173,93 @@ export async function streamGenerate(
       }
     }
   }
+}
+
+// ── Prompts ───────────────────────────────────────────────────────────────────
+
+export interface FetchPromptsParams {
+  search?: string
+  tag?: string
+  favorite?: boolean
+  page?: number
+  limit?: number
+}
+
+export interface FetchPromptsResult {
+  prompts: Prompt[]
+  tags: Tag[]
+  total: number
+  page: number
+  limit: number
+}
+
+export async function fetchPrompts(
+  baseUrl: string,
+  params?: FetchPromptsParams,
+): Promise<FetchPromptsResult> {
+  const url = new URL(`${baseUrl}/api/v1/prompts`)
+  if (params?.search) url.searchParams.set('search', params.search)
+  if (params?.tag) url.searchParams.set('tag', params.tag)
+  if (params?.favorite != null) url.searchParams.set('favorite', String(params.favorite))
+  if (params?.page) url.searchParams.set('page', String(params.page))
+  if (params?.limit) url.searchParams.set('limit', String(params.limit))
+
+  const res = await fetch(url.toString())
+  if (!res.ok) throw new Error(`Prompts request failed: ${res.statusText}`)
+  const json: ApiResponse<Prompt[]> = await res.json()
+  if (!json.success) throw new Error(json.error ?? 'Unknown error from prompts endpoint')
+
+  const prompts = json.data ?? []
+  const tagMap = new Map<string, Tag>()
+  for (const p of prompts) {
+    for (const t of p.tags) tagMap.set(t.id, t)
+  }
+  return {
+    prompts,
+    tags: Array.from(tagMap.values()),
+    total: json.metadata?.total ?? prompts.length,
+    page: json.metadata?.page ?? 1,
+    limit: json.metadata?.limit ?? 20,
+  }
+}
+
+export async function createPrompt(baseUrl: string, data: PromptCreate): Promise<Prompt> {
+  const res = await fetch(`${baseUrl}/api/v1/prompts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(`Create prompt failed: ${res.statusText}`)
+  const json: ApiResponse<Prompt> = await res.json()
+  if (!json.success || !json.data) throw new Error(json.error ?? 'Create prompt error')
+  return json.data
+}
+
+export async function updatePrompt(baseUrl: string, id: string, data: PromptUpdate): Promise<Prompt> {
+  const res = await fetch(`${baseUrl}/api/v1/prompts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(`Update prompt failed: ${res.statusText}`)
+  const json: ApiResponse<Prompt> = await res.json()
+  if (!json.success || !json.data) throw new Error(json.error ?? 'Update prompt error')
+  return json.data
+}
+
+export async function deletePrompt(baseUrl: string, id: string): Promise<void> {
+  const res = await fetch(`${baseUrl}/api/v1/prompts/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`Delete prompt failed: ${res.statusText}`)
+  const json: ApiResponse<null> = await res.json()
+  if (!json.success) throw new Error(json.error ?? 'Delete prompt error')
+}
+
+export async function recordCopy(baseUrl: string, id: string): Promise<Prompt> {
+  const res = await fetch(`${baseUrl}/api/v1/prompts/${id}/copy`, { method: 'POST' })
+  if (!res.ok) throw new Error(`Record copy failed: ${res.statusText}`)
+  const json: ApiResponse<Prompt> = await res.json()
+  if (!json.success || !json.data) throw new Error(json.error ?? 'Record copy error')
+  return json.data
 }
 
 // ── Template processing ───────────────────────────────────────────────────────
