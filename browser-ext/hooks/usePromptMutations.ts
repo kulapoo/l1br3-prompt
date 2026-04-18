@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAppConfig } from '../contexts/AppConfig'
-import { deletePrompt, updatePrompt, recordCopy } from '../lib/api'
+import { deletePrompt, updatePrompt, recordCopy, createPrompt } from '../lib/api'
 import type { FetchPromptsResult } from '../lib/api'
-import type { Prompt } from '../types'
+import type { Prompt, PromptCreate } from '../types'
 
 const PROMPTS_KEY = { queryKey: ['prompts'] }
 
@@ -88,4 +88,15 @@ export function usePromptMutations() {
   })
 
   return { deleteMutation, toggleFavoriteMutation, recordCopyMutation }
+}
+
+export function useCreatePrompt() {
+  const { config } = useAppConfig()
+  const queryClient = useQueryClient()
+  const baseUrl = config.backend.url
+
+  return useMutation({
+    mutationFn: (data: PromptCreate) => createPrompt(baseUrl, data),
+    onSettled: () => queryClient.invalidateQueries(PROMPTS_KEY),
+  })
 }

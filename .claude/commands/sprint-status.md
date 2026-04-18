@@ -1,4 +1,4 @@
-Read the current sprint plan from memory at `$HOME/.claude/projects/-home-jpt-src-oss-l1br3-prompt/memory/sprint_plan_current.md`.
+Read the current sprint plan from `.claude/memories/sprint_plan_current.md` in the project root.
 
 Then provide a concise status report:
 

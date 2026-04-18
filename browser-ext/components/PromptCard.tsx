@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Copy, Star, Edit2, Trash2, Clock, Play } from 'lucide-react';
+import { Copy, Star, Edit2, Trash2, Clock, Play, Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Prompt } from '../types';
 
 interface PromptCardProps {
   prompt: Prompt;
-  onCopy: (id: string) => void;
+  onCopy: (id: string) => Promise<boolean>;
   onToggleFavorite: (prompt: Prompt) => void;
   onEdit: (prompt: Prompt) => void;
   onDelete: (id: string) => void;
@@ -21,6 +21,7 @@ export function PromptCard({
   disabled = false,
 }: PromptCardProps) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   return (
     <motion.div
@@ -100,10 +101,14 @@ export function PromptCard({
               <Trash2 size={12} />
             </button>
             <button
-              onClick={() => onCopy(prompt.id)}
-              className="p-1.5 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/20 rounded-md transition-colors ml-1"
-              title="Copy Prompt">
-              <Copy size={14} />
+              onClick={async () => {
+                const ok = await onCopy(prompt.id);
+                setCopyStatus(ok ? 'copied' : 'failed');
+                setTimeout(() => setCopyStatus('idle'), 2000);
+              }}
+              className={`p-1.5 rounded-md transition-colors ml-1 ${copyStatus === 'copied' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : copyStatus === 'failed' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/20'}`}
+              title={copyStatus === 'copied' ? 'Copied!' : copyStatus === 'failed' ? 'Copy failed' : 'Copy Prompt'}>
+              {copyStatus === 'copied' ? <Check size={14} /> : copyStatus === 'failed' ? <X size={14} /> : <Copy size={14} />}
             </button>
           </div>
         )}

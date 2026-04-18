@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Sparkles,
   PenLine,
@@ -6,7 +6,6 @@ import {
   TerminalSquare } from
 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TabType } from '../types';
 import { PromptsTab } from './PromptsTab';
 import { SuggestionsTab } from './SuggestionsTab';
 import { ComposeTab } from './ComposeTab';
@@ -14,6 +13,7 @@ import { SettingsTab } from './SettingsTab';
 import { StatusBar } from './StatusBar';
 import { useBackendHealth } from '../hooks/useBackendHealth';
 import { useCloudQuota } from '../hooks/useCloudQuota';
+import { useAppConfig } from '../contexts/AppConfig';
 
 export function Sidebar() {
   // Live-detect the local backend so config.backend.isInstalled reflects
@@ -21,7 +21,7 @@ export function Sidebar() {
   useBackendHealth();
   // Background quota polling for cloud AI fallback.
   useCloudQuota();
-  const [activeTab, setActiveTab] = useState<TabType>('compose');
+  const { activeTab, setActiveTab } = useAppConfig();
   const tabs = [
   {
     id: 'compose',

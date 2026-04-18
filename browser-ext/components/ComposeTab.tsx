@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { streamGenerate, QuotaExceededError, processTemplate } from '../lib/api';
 import { composePromptFor } from '../lib/compose';
+import { useCreatePrompt } from '../hooks/usePromptMutations';
 import {
   Save,
   X,
@@ -20,7 +21,8 @@ import {
   ListOrdered,
   Minus,
   RefreshCw,
-  SlidersHorizontal } from
+  SlidersHorizontal,
+  Info } from
 'lucide-react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -29,8 +31,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppConfig } from '../contexts/AppConfig';
 
 export function ComposeTab() {
-  const { config, updateConfig } = useAppConfig();
+  const { config, updateConfig, setActiveTab } = useAppConfig();
+  const createMutation = useCreatePrompt();
   const [title, setTitle] = useState('');
+  const [tags, setTags] = useState<Array<{ name: string }>>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState(false);
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [detectedVars, setDetectedVars] = useState<string[]>([]);
   const [isCopied, setIsCopied] = useState(false);
@@ -221,7 +228,50 @@ export function ComposeTab() {
     handleInsertText(action.insertText);
   };
 
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const name = tagInput.trim().replace(/,$/, '');
+      if (!name) return;
+      if (!tags.some((t) => t.name.toLowerCase() === name.toLowerCase())) {
+        setTags([...tags, { name }]);
+      }
+      setTagInput('');
+    }
+  };
+
+  const removeTag = (index: number) => {
+    setTags(tags.filter((_, i) => i !== index));
+  };
+
+  const handleSave = () => {
+    if (!editor || !config.backend.isInstalled) return;
+    const content = editor.getText().trim();
+    if (!content) return;
+    setSaveError(null);
+    createMutation.mutate(
+      { title, content, tags },
+      {
+        onSuccess: () => {
+          setTitle('');
+          editor.commands.clearContent();
+          setTags([]);
+          setTagInput('');
+          setSavedFlash(true);
+          setTimeout(() => {
+            setSavedFlash(false);
+            setActiveTab('prompts');
+          }, 800);
+        },
+        onError: (err) => {
+          setSaveError(err.message);
+        },
+      }
+    );
+  };
+
   const editorText = editor?.getText() || '';
+  const isSaveDisabled = !editorText.trim() || !config.backend.isInstalled || createMutation.isPending;
 
   return (
     <div className="flex flex-col h-full">
@@ -237,12 +287,36 @@ export function ComposeTab() {
             {isCopied ? <Check size={14} /> : <Copy size={14} />}
             {isCopied ? 'Copied!' : 'Copy'}
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-md transition-colors">
-            <Save size={14} /> Save
+          <button
+            onClick={handleSave}
+            disabled={isSaveDisabled}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            <Save size={14} /> {createMutation.isPending ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>
 
+      {!config.backend.isInstalled && (
+        <div className="mx-4 mt-3 p-2 bg-slate-900 border border-slate-800 rounded-lg flex items-start gap-2">
+          <Info size={14} className="text-slate-400 shrink-0 mt-0.5" />
+          <p className="text-[10px] text-slate-400 leading-relaxed">
+            Backend not connected. Start the local backend to save prompts.
+          </p>
+        </div>
+      )}
+      {savedFlash && (
+        <div className="mx-4 mt-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center gap-2">
+          <span className="text-emerald-400 text-[10px] leading-relaxed">Saved!</span>
+        </div>
+      )}
+      {saveError && (
+        <div className="mx-4 mt-3 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg flex items-start gap-2">
+          <span className="text-rose-400 text-[10px] leading-relaxed flex-1">{saveError}</span>
+          <button onClick={() => setSaveError(null)} className="ml-auto text-rose-500/60 hover:text-rose-400 shrink-0">
+            <X size={12} />
+          </button>
+        </div>
+      )}
       {quotaError && (
         <div className="mx-4 mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-start gap-2">
           <span className="text-amber-400 text-[10px] leading-relaxed">{quotaError}</span>
@@ -529,16 +603,24 @@ export function ComposeTab() {
           <label className="block text-xs font-medium text-slate-400 flex items-center gap-1.5">
             <Tag size={12} /> Tags
           </label>
-          <div className="flex items-center gap-2 p-2 bg-slate-900 border border-slate-800 rounded-lg">
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md border bg-blue-500/20 text-blue-400 border-blue-500/30 flex items-center gap-1">
-              Code{' '}
-              <X size={10} className="cursor-pointer hover:text-blue-200" />
-            </span>
+          <div className="flex flex-wrap items-center gap-2 p-2 bg-slate-900 border border-slate-800 rounded-lg">
+            {tags.map((tag, i) => (
+              <span
+                key={i}
+                className="text-[10px] px-1.5 py-0.5 rounded-md border bg-indigo-500/20 text-indigo-400 border-indigo-500/30 flex items-center gap-1">
+                {tag.name}
+                <button onClick={() => removeTag(i)}>
+                  <X size={10} className="cursor-pointer hover:text-indigo-200" />
+                </button>
+              </span>
+            ))}
             <input
               type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleTagKeyDown}
               placeholder="Add tag..."
               className="bg-transparent border-none text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none flex-1 min-w-[60px]" />
-
           </div>
         </div>
       </div>

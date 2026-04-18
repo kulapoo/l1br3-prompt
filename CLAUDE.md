@@ -110,3 +110,6 @@ The `.claude/` harness includes a planning toolchain for agile development:
 | `/pr-review` | Code review (local changes or GitHub PR) |
 
 Supporting skills: `product-capability`, `strategic-compact`, `project-flow-ops`
+
+Behavioral rules for this workflow: `.claude/rules/workflow.md`.
+Full contributor guide: `CONTRIBUTING.md`.

@@ -1,5 +1,6 @@
 import React, { useState, createContext, useContext, useEffect } from 'react';
 import { loadConfig, saveConfig } from '../lib/storage';
+import type { TabType } from '../types';
 
 export type QuickActionSource =
 {
@@ -67,6 +68,8 @@ interface AppConfigContextType {
   setConfig: React.Dispatch<React.SetStateAction<AppConfig>>;
   updateConfig: (updates: Partial<AppConfig>) => void;
   updateSync: (updates: Partial<AppConfig['sync']>) => void;
+  activeTab: TabType;
+  setActiveTab: (tab: TabType) => void;
 }
 
 const defaultQuickActions: QuickAction[] = [
@@ -171,6 +174,7 @@ const AppConfigContext = createContext<AppConfigContextType | undefined>(
 export function AppConfigProvider({ children }: {children: React.ReactNode;}) {
   const [config, setConfig] = useState<AppConfig>(defaultConfig);
   const [hydrated, setHydrated] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('compose');
 
   // Hydrate from browser.storage.local on mount
   useEffect(() => {
@@ -216,6 +220,8 @@ export function AppConfigProvider({ children }: {children: React.ReactNode;}) {
         setConfig,
         updateConfig,
         updateSync,
+        activeTab,
+        setActiveTab,
       }}>
       {children}
     </AppConfigContext.Provider>);

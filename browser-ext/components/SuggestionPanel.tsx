@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { Sparkles, ChevronDown, ChevronUp, Settings2, Check } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Suggestion } from "../types"
+import { insertIntoActiveTab } from "../lib/insertIntoActiveTab"
 
 interface SuggestionPanelProps {
   suggestion: Suggestion
@@ -14,10 +15,7 @@ export function SuggestionPanel({ suggestion }: SuggestionPanelProps) {
   const handleApply = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (suggestion.suggestedText) {
-      const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
-      if (tab?.id) {
-        browser.tabs.sendMessage(tab.id, { type: "INSERT_TEXT", text: suggestion.suggestedText }).catch(() => {})
-      }
+      await insertIntoActiveTab(suggestion.suggestedText)
     }
     setIsApplied(true)
     setTimeout(() => setIsApplied(false), 2000)

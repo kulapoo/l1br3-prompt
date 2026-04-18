@@ -5,6 +5,7 @@ import { PromptCard } from './PromptCard';
 import { usePrompts } from '../hooks/usePrompts';
 import { usePromptMutations } from '../hooks/usePromptMutations';
 import { useAppConfig } from '../contexts/AppConfig';
+import { insertIntoActiveTab } from '../lib/insertIntoActiveTab';
 import type { Prompt } from '../types';
 
 export function PromptsTab() {
@@ -27,11 +28,19 @@ export function PromptsTab() {
     recordCopyMutation.error?.message ??
     null;
 
-  const handleCopy = (id: string) => {
+  const handleCopy = async (id: string): Promise<boolean> => {
+    const prompt = prompts.find(p => p.id === id);
+    if (!prompt) return false;
+    try {
+      await navigator.clipboard.writeText(prompt.content);
+    } catch {
+      return false;
+    }
+    await insertIntoActiveTab(prompt.content);
     if (config.backend.isInstalled) {
       recordCopyMutation.mutate(id);
     }
-    // TODO(F4): copy to clipboard + content script insertion
+    return true;
   };
 
   const handleToggleFavorite = (prompt: Prompt) => {
