@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { streamGenerate, QuotaExceededError, processTemplate } from '../lib/api';
 import { composePromptFor } from '../lib/compose';
-import { useCreatePrompt } from '../hooks/usePromptMutations';
+import { useCreatePrompt, useUpdatePrompt } from '../hooks/usePromptMutations';
 import {
   Save,
   X,
@@ -31,8 +31,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppConfig } from '../contexts/AppConfig';
 
 export function ComposeTab() {
-  const { config, updateConfig, setActiveTab } = useAppConfig();
+  const { config, updateConfig, setActiveTab, editingPrompt, setEditingPrompt } = useAppConfig();
   const createMutation = useCreatePrompt();
+  const updateMutation = useUpdatePrompt();
+  const isEditing = editingPrompt !== null;
   const [title, setTitle] = useState('');
   const [tags, setTags] = useState<Array<{ name: string }>>([]);
   const [tagInput, setTagInput] = useState('');
@@ -103,6 +105,14 @@ export function ComposeTab() {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showSuggestions]);
+
+  // Pre-fill editor when entering edit mode
+  useEffect(() => {
+    if (!editor || !editingPrompt) return;
+    setTitle(editingPrompt.title ?? '');
+    editor.commands.setContent(editingPrompt.content);
+    setTags(editingPrompt.tags.map((t) => ({ name: t.name })));
+  }, [editor, editingPrompt]);
 
   const handleInsertText = (text: string) => {
     if (!editor) return;
@@ -244,40 +254,56 @@ export function ComposeTab() {
     setTags(tags.filter((_, i) => i !== index));
   };
 
+  const handleCancelEdit = () => {
+    setTitle('');
+    editor?.commands.clearContent();
+    setTags([]);
+    setTagInput('');
+    setEditingPrompt(null);
+  };
+
   const handleSave = () => {
     if (!editor || !config.backend.isInstalled) return;
     const content = editor.getText().trim();
     if (!content) return;
     setSaveError(null);
-    createMutation.mutate(
-      { title, content, tags },
-      {
-        onSuccess: () => {
-          setTitle('');
-          editor.commands.clearContent();
-          setTags([]);
-          setTagInput('');
-          setSavedFlash(true);
-          setTimeout(() => {
-            setSavedFlash(false);
-            setActiveTab('prompts');
-          }, 800);
-        },
-        onError: (err) => {
-          setSaveError(err.message);
-        },
-      }
-    );
+
+    const onSuccess = () => {
+      setTitle('');
+      editor.commands.clearContent();
+      setTags([]);
+      setTagInput('');
+      setEditingPrompt(null);
+      setSavedFlash(true);
+      setTimeout(() => {
+        setSavedFlash(false);
+        setActiveTab('prompts');
+      }, 800);
+    };
+    const onError = (err: Error) => setSaveError(err.message);
+
+    if (isEditing) {
+      updateMutation.mutate(
+        { id: editingPrompt!.id, data: { title, content, tags } },
+        { onSuccess, onError }
+      );
+    } else {
+      createMutation.mutate({ title, content, tags }, { onSuccess, onError });
+    }
   };
 
   const editorText = editor?.getText() || '';
-  const isSaveDisabled = !editorText.trim() || !config.backend.isInstalled || createMutation.isPending;
+  const isSaveDisabled =
+    !editorText.trim() ||
+    !config.backend.isInstalled ||
+    createMutation.isPending ||
+    updateMutation.isPending;
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b border-slate-800 bg-slate-950/50 sticky top-0 z-10 backdrop-blur-md flex items-center justify-between">
-        <h2 className="text-sm font-medium text-slate-200">Compose</h2>
+        <h2 className="text-sm font-medium text-slate-200">{isEditing ? 'Edit Prompt' : 'Compose'}</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={handleCopy}
@@ -287,11 +313,18 @@ export function ComposeTab() {
             {isCopied ? <Check size={14} /> : <Copy size={14} />}
             {isCopied ? 'Copied!' : 'Copy'}
           </button>
+          {isEditing && (
+            <button
+              onClick={handleCancelEdit}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700">
+              <X size={14} /> Cancel
+            </button>
+          )}
           <button
             onClick={handleSave}
             disabled={isSaveDisabled}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-            <Save size={14} /> {createMutation.isPending ? 'Saving…' : 'Save'}
+            <Save size={14} /> {isEditing ? (updateMutation.isPending ? 'Updating…' : 'Update') : (createMutation.isPending ? 'Saving…' : 'Save')}
           </button>
         </div>
       </div>

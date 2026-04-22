@@ -9,7 +9,7 @@ import { insertIntoActiveTab } from '../lib/insertIntoActiveTab';
 import type { Prompt } from '../types';
 
 export function PromptsTab() {
-  const { config } = useAppConfig();
+  const { config, setActiveTab, setEditingPrompt } = useAppConfig();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
@@ -53,12 +53,14 @@ export function PromptsTab() {
     deleteMutation.mutate(id);
   };
 
-  const handleEdit = (_prompt: Prompt) => {
-    // TODO(F5): navigate to ComposeTab pre-filled with this prompt
+  const handleEdit = (prompt: Prompt) => {
+    setEditingPrompt(prompt);
+    setActiveTab('compose');
   };
 
   const handleCreate = () => {
-    // TODO(F5): navigate to ComposeTab for a new prompt
+    setEditingPrompt(null);
+    setActiveTab('compose');
   };
 
   const clearMutationErrors = () => {

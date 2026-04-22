@@ -29,7 +29,7 @@ dev-ext-ff:
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
 # Run all tests
-test: test-api test-worker
+test: test-api test-worker test-ext
 
 # API tests (pytest)
 test-api:
@@ -38,6 +38,10 @@ test-api:
 # Cloudflare Worker tests (vitest)
 test-worker:
     cd workers/cloud-ai && pnpm test
+
+# Browser extension tests (vitest)
+test-ext:
+    cd browser-ext && pnpm test
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 
