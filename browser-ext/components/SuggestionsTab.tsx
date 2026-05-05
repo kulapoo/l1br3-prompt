@@ -7,12 +7,15 @@ import {
   AlertTriangle,
   Settings2,
   Sparkles,
+  Search,
+  X,
 } from 'lucide-react';
 import { SuggestionPanel } from './SuggestionPanel';
 import { useAppConfig } from '../contexts/AppConfig';
 import { fetchSuggestions } from '../lib/api';
 import { useDebounce } from '../hooks/useDebounce';
-import type { Suggestion, SuggestContext } from '../types';
+import { usePrompts } from '../hooks/usePrompts';
+import type { Prompt, Suggestion, SuggestContext } from '../types';
 
 export function SuggestionsTab() {
   const { config } = useAppConfig();
@@ -22,6 +25,7 @@ export function SuggestionsTab() {
   const [error, setError] = useState<string | null>(null);
   const [pageContext, setPageContext] = useState<Omit<SuggestContext, 'inputText'>>({});
   const [useAi, setUseAi] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
 
   const debouncedInput = useDebounce(input, 500);
   const backendConnected = config.backend.isInstalled;
@@ -85,7 +89,16 @@ export function SuggestionsTab() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
+      {showPicker && (
+        <FromSavedPicker
+          onSelect={(prompt) => {
+            setInput(prompt.content);
+            setShowPicker(false);
+          }}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
       <div className="p-4 border-b border-slate-800 bg-slate-950/50 sticky top-0 z-10 backdrop-blur-md">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-medium text-slate-200">Enhance</h2>
@@ -151,7 +164,10 @@ export function SuggestionsTab() {
             >
               <Link size={12} /> Paste URL
             </button>
-            <button className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md text-[10px] font-medium text-slate-300 transition-colors">
+            <button
+              onClick={() => setShowPicker(true)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md text-[10px] font-medium text-slate-300 transition-colors"
+            >
               <Bookmark size={12} /> From Saved
             </button>
             <button
@@ -204,6 +220,84 @@ export function SuggestionsTab() {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+interface FromSavedPickerProps {
+  onSelect: (prompt: Prompt) => void;
+  onClose: () => void;
+}
+
+function FromSavedPicker({ onSelect, onClose }: FromSavedPickerProps) {
+  const [query, setQuery] = useState('');
+  const { prompts, isLoading, error, isFromCache } = usePrompts(query, null, null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      data-testid="from-saved-picker"
+      className="absolute inset-0 z-30 flex flex-col bg-slate-950/95 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="p-4 border-b border-slate-800 flex items-center gap-2">
+        <Search size={14} className="text-slate-500 shrink-0" />
+        <input
+          autoFocus
+          type="text"
+          placeholder="Search saved prompts..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="flex-1 bg-transparent text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none"
+        />
+        <button
+          onClick={onClose}
+          className="p-1 text-slate-500 hover:text-slate-300 rounded-md hover:bg-slate-800 transition-colors"
+          aria-label="Close picker"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {isFromCache && (
+          <p className="text-[10px] text-amber-400/80 text-center pb-2">
+            Offline — showing cached prompts
+          </p>
+        )}
+        {isLoading && (
+          <p className="text-xs text-slate-500 text-center py-8">Loading prompts…</p>
+        )}
+        {error && (
+          <p className="text-xs text-rose-400 text-center py-8">{error}</p>
+        )}
+        {!isLoading && !error && prompts.length === 0 && (
+          <p className="text-xs text-slate-600 text-center py-8">
+            {query ? 'No prompts match your search.' : 'No saved prompts yet.'}
+          </p>
+        )}
+        {prompts.map((prompt) => (
+          <button
+            key={prompt.id}
+            onClick={() => onSelect(prompt)}
+            className="w-full text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 rounded-lg p-3 transition-colors"
+          >
+            <p className="text-xs font-medium text-slate-200 truncate">
+              {prompt.title || '(untitled)'}
+            </p>
+            <p className="text-[10px] text-slate-500 line-clamp-2 mt-1 leading-relaxed">
+              {prompt.content}
+            </p>
+          </button>
+        ))}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { streamGenerate, QuotaExceededError, processTemplate } from '../lib/api';
 import { composePromptFor } from '../lib/compose';
 import { useCreatePrompt, useUpdatePrompt } from '../hooks/usePromptMutations';
+import { useCategories } from '../hooks/useCategories';
 import {
   Save,
   X,
@@ -34,8 +35,10 @@ export function ComposeTab() {
   const { config, updateConfig, setActiveTab, editingPrompt, setEditingPrompt } = useAppConfig();
   const createMutation = useCreatePrompt();
   const updateMutation = useUpdatePrompt();
+  const { categories } = useCategories();
   const isEditing = editingPrompt !== null;
   const [title, setTitle] = useState('');
+  const [category, setCategory] = useState<string>('General');
   const [tags, setTags] = useState<Array<{ name: string }>>([]);
   const [tagInput, setTagInput] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -106,10 +109,14 @@ export function ComposeTab() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showSuggestions]);
 
-  // Pre-fill editor when entering edit mode
+  // No cleanup: React 19 StrictMode double-invoke would flip isEditing if a cleanup
+  // cleared editingPrompt — keep this effect side-effect-only.
   useEffect(() => {
     if (!editor || !editingPrompt) return;
+    setVariables({});
+    setDetectedVars([]);
     setTitle(editingPrompt.title ?? '');
+    setCategory(editingPrompt.category || 'General');
     editor.commands.setContent(editingPrompt.content);
     setTags(editingPrompt.tags.map((t) => ({ name: t.name })));
   }, [editor, editingPrompt]);
@@ -256,9 +263,12 @@ export function ComposeTab() {
 
   const handleCancelEdit = () => {
     setTitle('');
+    setCategory('General');
     editor?.commands.clearContent();
     setTags([]);
     setTagInput('');
+    setVariables({});
+    setDetectedVars([]);
     setEditingPrompt(null);
   };
 
@@ -270,9 +280,12 @@ export function ComposeTab() {
 
     const onSuccess = () => {
       setTitle('');
+      setCategory('General');
       editor.commands.clearContent();
       setTags([]);
       setTagInput('');
+      setVariables({});
+      setDetectedVars([]);
       setEditingPrompt(null);
       setSavedFlash(true);
       setTimeout(() => {
@@ -284,11 +297,11 @@ export function ComposeTab() {
 
     if (isEditing) {
       updateMutation.mutate(
-        { id: editingPrompt!.id, data: { title, content, tags } },
+        { id: editingPrompt!.id, data: { title, content, category, tags } },
         { onSuccess, onError }
       );
     } else {
-      createMutation.mutate({ title, content, tags }, { onSuccess, onError });
+      createMutation.mutate({ title, content, category, tags }, { onSuccess, onError });
     }
   };
 
@@ -360,18 +373,37 @@ export function ComposeTab() {
       )}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5 pb-20">
-        {/* Title */}
-        <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1.5">
-            Title (Optional)
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g., Code Review Assistant"
-            className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" />
-
+        {/* Title + Category */}
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              Title (Optional)
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Code Review Assistant"
+              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" />
+          </div>
+          <div className="w-40">
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              Category
+            </label>
+            <input
+              list="category-options"
+              type="text"
+              value={category}
+              onChange={(e) => setCategory(e.target.value || 'General')}
+              placeholder="General"
+              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+            />
+            <datalist id="category-options">
+              {categories.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </div>
         </div>
 
         {/* Editor */}

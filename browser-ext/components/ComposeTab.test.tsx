@@ -1,8 +1,11 @@
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import type { AppConfig } from '../contexts/AppConfig'
 import type { Prompt } from '../types'
+
+type OnUpdateCallback = (args: { editor: { getText: () => string } }) => void
+let capturedOnUpdate: OnUpdateCallback | undefined
 
 // Minimal editor mock: non-null so pre-fill useEffect runs past the `if (!editor)` guard
 const chainEnd = { run: vi.fn() }
@@ -17,12 +20,15 @@ const mockEditor = {
   isActive: () => false,
   state: { selection: { from: 0, to: 0 }, doc: { textBetween: () => '' } },
   getHTML: () => '<p>Updated content</p>',
-  getText: () => 'Updated content',
+  getText: vi.fn(() => 'Updated content'),
   isEmpty: false,
 }
 
 vi.mock('@tiptap/react', () => ({
-  useEditor: () => mockEditor,
+  useEditor: (opts?: Record<string, unknown>) => {
+    capturedOnUpdate = opts?.onUpdate as OnUpdateCallback | undefined
+    return mockEditor
+  },
   EditorContent: () => React.createElement('div', { 'data-testid': 'tiptap-editor' }),
 }))
 
@@ -98,6 +104,10 @@ beforeEach(() => {
   vi.mocked(mutations.useUpdatePrompt).mockReturnValue({ mutate: updateMutate, isPending: false } as unknown as ReturnType<typeof mutations.useUpdatePrompt>)
   createMutate.mockReset()
   updateMutate.mockReset()
+  mockEditor.commands.setContent.mockClear()
+  mockEditor.commands.clearContent.mockClear()
+  mockEditor.getText.mockReturnValue('Updated content')
+  capturedOnUpdate = undefined
 })
 
 describe('ComposeTab — edit mode', () => {
@@ -124,5 +134,80 @@ describe('ComposeTab — edit mode', () => {
       expect.any(Object),
     )
     expect(createMutate).not.toHaveBeenCalled()
+  })
+
+  it('pre-fills editor content and tags from editingPrompt', () => {
+    vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt })
+
+    render(React.createElement(ComposeTab))
+
+    expect(mockEditor.commands.setContent).toHaveBeenCalledWith(editingPrompt.content)
+    expect(screen.getByText('test-tag')).toBeInTheDocument()
+  })
+
+  it('Cancel clears draft, calls setEditingPrompt(null), and does not switch tabs', () => {
+    const setEditingPrompt = vi.fn()
+    const setActiveTab = vi.fn()
+    vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt, setEditingPrompt, setActiveTab })
+
+    render(React.createElement(ComposeTab))
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+
+    expect(setEditingPrompt).toHaveBeenCalledWith(null)
+    expect(setActiveTab).not.toHaveBeenCalled()
+    expect(mockEditor.commands.clearContent).toHaveBeenCalled()
+  })
+
+  it('onSuccess resets draft, calls setEditingPrompt(null), and switches to prompts after 800ms', () => {
+    vi.useFakeTimers()
+    const setEditingPrompt = vi.fn()
+    const setActiveTab = vi.fn()
+    vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt, setEditingPrompt, setActiveTab })
+
+    render(React.createElement(ComposeTab))
+    fireEvent.click(screen.getByRole('button', { name: /update/i }))
+
+    const [, { onSuccess }] = updateMutate.mock.calls[0] as [unknown, { onSuccess: () => void; onError: (e: Error) => void }]
+    act(() => { onSuccess() })
+
+    expect(setEditingPrompt).toHaveBeenCalledWith(null)
+    expect(setActiveTab).not.toHaveBeenCalled()
+
+    act(() => { vi.advanceTimersByTime(800) })
+    expect(setActiveTab).toHaveBeenCalledWith('prompts')
+
+    vi.useRealTimers()
+  })
+
+  it('onError surfaces saveError banner and preserves editingPrompt for retry', () => {
+    const setEditingPrompt = vi.fn()
+    vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt, setEditingPrompt })
+
+    render(React.createElement(ComposeTab))
+    fireEvent.click(screen.getByRole('button', { name: /update/i }))
+
+    const [, { onError }] = updateMutate.mock.calls[0] as [unknown, { onSuccess: () => void; onError: (e: Error) => void }]
+    act(() => { onError(new Error('Network error')) })
+
+    expect(screen.getByText('Network error')).toBeInTheDocument()
+    expect(setEditingPrompt).not.toHaveBeenCalled()
+  })
+
+  it('entering edit mode clears stale variables from a prior draft', () => {
+    vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt: null })
+    const { rerender } = render(React.createElement(ComposeTab))
+
+    // Simulate user having {{old_var}} in the editor during create mode
+    act(() => {
+      capturedOnUpdate?.({ editor: { getText: () => '{{old_var}} is here' } })
+    })
+    expect(screen.getByText('{{old_var}}')).toBeInTheDocument()
+
+    // Switch to edit mode with a prompt whose content has no template variables
+    mockEditor.getText.mockReturnValue('Hello world')
+    vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt })
+    rerender(React.createElement(ComposeTab))
+
+    expect(screen.queryByText('{{old_var}}')).not.toBeInTheDocument()
   })
 })

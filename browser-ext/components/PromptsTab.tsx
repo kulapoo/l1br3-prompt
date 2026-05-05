@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Search, Plus, Info, RefreshCw, X } from 'lucide-react';
+import { Search, Plus, Info, RefreshCw, X, WifiOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PromptCard } from './PromptCard';
 import { usePrompts } from '../hooks/usePrompts';
+import { useCategories } from '../hooks/useCategories';
 import { usePromptMutations } from '../hooks/usePromptMutations';
 import { useAppConfig } from '../contexts/AppConfig';
 import { insertIntoActiveTab } from '../lib/insertIntoActiveTab';
@@ -12,13 +13,16 @@ export function PromptsTab() {
   const { config, setActiveTab, setEditingPrompt } = useAppConfig();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
-  const { prompts, tags, isLoading, error, refresh } = usePrompts(
+  const { prompts, tags, isLoading, error, isFromCache, cachedAt, refresh } = usePrompts(
     searchQuery,
     activeTagFilter,
     showFavoritesOnly ? true : null,
+    activeCategoryFilter,
   );
+  const { categories } = useCategories();
 
   const { deleteMutation, toggleFavoriteMutation, recordCopyMutation } = usePromptMutations();
 
@@ -69,19 +73,30 @@ export function PromptsTab() {
     recordCopyMutation.reset();
   };
 
-  const isAll = activeTagFilter === null && !showFavoritesOnly;
+  const isAll =
+    activeTagFilter === null && activeCategoryFilter === null && !showFavoritesOnly;
 
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-slate-800 bg-slate-950/50 sticky top-0 z-10 backdrop-blur-md">
-        {!config.backend.isInstalled &&
+        {!config.backend.isInstalled && !isFromCache && (
           <div className="mb-3 p-2 bg-slate-900 border border-slate-800 rounded-lg flex items-start gap-2">
             <Info size={14} className="text-slate-400 shrink-0 mt-0.5" />
             <p className="text-[10px] text-slate-400 leading-relaxed">
               Backend not connected. Start the local backend to load your prompts.
             </p>
           </div>
-        }
+        )}
+        {isFromCache && (
+          <div className="mb-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-start gap-2">
+            <WifiOff size={14} className="text-amber-400 shrink-0 mt-0.5" />
+            <p className="text-[10px] text-amber-300 leading-relaxed">
+              Offline — showing cached prompts
+              {cachedAt ? ` (updated ${formatCacheTime(cachedAt)})` : ''}. Start the
+              local backend to sync.
+            </p>
+          </div>
+        )}
         <div className="relative mb-3">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
@@ -96,7 +111,11 @@ export function PromptsTab() {
 
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
           <button
-            onClick={() => { setActiveTagFilter(null); setShowFavoritesOnly(false); }}
+            onClick={() => {
+              setActiveTagFilter(null);
+              setActiveCategoryFilter(null);
+              setShowFavoritesOnly(false);
+            }}
             className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-colors ${isAll ? 'bg-slate-200 text-slate-900' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
             All
           </button>
@@ -105,6 +124,17 @@ export function PromptsTab() {
             className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-colors ${showFavoritesOnly ? 'bg-amber-400 text-amber-950' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
             Favorites
           </button>
+          {categories.length > 0 && <div className="w-px h-4 bg-slate-700 mx-1"></div>}
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() =>
+                setActiveCategoryFilter(activeCategoryFilter === cat ? null : cat)
+              }
+              className={`whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium transition-colors ${activeCategoryFilter === cat ? 'bg-emerald-500 text-emerald-950' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
+              {cat}
+            </button>
+          ))}
           {tags.length > 0 && <div className="w-px h-4 bg-slate-700 mx-1"></div>}
           {tags.map((tag) =>
             <button
@@ -190,4 +220,15 @@ export function PromptsTab() {
       </div>
     </div>
   );
+}
+
+function formatCacheTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
 }

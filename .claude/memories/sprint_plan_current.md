@@ -76,14 +76,14 @@ Finish the browser extension MVP by wiring existing UI components to the backend
 - **Files**: `browser-ext/components/Sidebar.tsx`, `browser-ext/components/ComposeTab.tsx`, `browser-ext/contexts/AppConfig.tsx`
 - **Complexity**: Medium
 - **Depends on**: F2, F3
-- **Status**: Not started
+- **Status**: Done (2026-04-22) — navigateTo via AppConfig context, ComposeTab accepts editingPrompt, vitest scaffolded with save-branch tests
 
 ### F6. SuggestionsTab: "From Saved" Button
 - Open searchable prompt picker; selecting populates input textarea
 - **Files**: `browser-ext/components/SuggestionsTab.tsx`, `browser-ext/lib/api.ts`
 - **Complexity**: Low
 - **Depends on**: F1
-- **Status**: Not started
+- **Status**: Done (2026-05-05) — FromSavedPicker overlay, 12 Vitest tests, offline cache + banner, all ACs met
 
 ### F7. Category Management
 - Category dropdown in ComposeTab (from `GET /api/v1/categories`)

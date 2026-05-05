@@ -180,6 +180,7 @@ export async function streamGenerate(
 export interface FetchPromptsParams {
   search?: string
   tag?: string
+  category?: string
   favorite?: boolean
   page?: number
   limit?: number
@@ -200,6 +201,7 @@ export async function fetchPrompts(
   const url = new URL(`${baseUrl}/api/v1/prompts`)
   if (params?.search) url.searchParams.set('search', params.search)
   if (params?.tag) url.searchParams.set('tag', params.tag)
+  if (params?.category) url.searchParams.set('category', params.category)
   if (params?.favorite != null) url.searchParams.set('favorite', String(params.favorite))
   if (params?.page) url.searchParams.set('page', String(params.page))
   if (params?.limit) url.searchParams.set('limit', String(params.limit))
@@ -260,6 +262,16 @@ export async function recordCopy(baseUrl: string, id: string): Promise<Prompt> {
   const json: ApiResponse<Prompt> = await res.json()
   if (!json.success || !json.data) throw new Error(json.error ?? 'Record copy error')
   return json.data
+}
+
+// ── Categories ────────────────────────────────────────────────────────────────
+
+export async function fetchCategories(baseUrl: string): Promise<string[]> {
+  const res = await fetch(`${baseUrl}/api/v1/categories`)
+  if (!res.ok) throw new Error(`Categories request failed: ${res.statusText}`)
+  const json: ApiResponse<string[]> = await res.json()
+  if (!json.success) throw new Error(json.error ?? 'Unknown error from categories endpoint')
+  return json.data ?? []
 }
 
 // ── Template processing ───────────────────────────────────────────────────────
