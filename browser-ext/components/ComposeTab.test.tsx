@@ -53,9 +53,11 @@ vi.mock('../hooks/usePromptMutations', () => ({
   useCreatePrompt: vi.fn(),
   useUpdatePrompt: vi.fn(),
 }))
+vi.mock('../hooks/useCategories', () => ({ useCategories: vi.fn() }))
 
 import { useAppConfig } from '../contexts/AppConfig'
 import * as mutations from '../hooks/usePromptMutations'
+import { useCategories } from '../hooks/useCategories'
 import { ComposeTab } from './ComposeTab'
 
 const mockConfig: AppConfig = {
@@ -102,6 +104,7 @@ const baseContext = {
 beforeEach(() => {
   vi.mocked(mutations.useCreatePrompt).mockReturnValue({ mutate: createMutate, isPending: false } as unknown as ReturnType<typeof mutations.useCreatePrompt>)
   vi.mocked(mutations.useUpdatePrompt).mockReturnValue({ mutate: updateMutate, isPending: false } as unknown as ReturnType<typeof mutations.useUpdatePrompt>)
+  vi.mocked(useCategories).mockReturnValue({ categories: ['Writing', 'Code'], isLoading: false, isFromCache: false })
   createMutate.mockReset()
   updateMutate.mockReset()
   mockEditor.commands.setContent.mockClear()
@@ -209,5 +212,41 @@ describe('ComposeTab — edit mode', () => {
     rerender(React.createElement(ComposeTab))
 
     expect(screen.queryByText('{{old_var}}')).not.toBeInTheDocument()
+  })
+})
+
+describe('ComposeTab — category', () => {
+  it('pre-fills category input with editingPrompt.category when editing', () => {
+    const promptWithCategory = { ...editingPrompt, category: 'Writing' }
+    vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt: promptWithCategory })
+
+    render(React.createElement(ComposeTab))
+
+    expect(screen.getByDisplayValue('Writing')).toBeInTheDocument()
+  })
+
+  it('datalist#category-options renders one <option> per category from useCategories', () => {
+    vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt: null })
+
+    const { container } = render(React.createElement(ComposeTab))
+
+    const datalist = container.querySelector('datalist#category-options')
+    expect(datalist).not.toBeNull()
+    expect(datalist!.querySelectorAll('option')).toHaveLength(2)
+    expect(datalist!.querySelector('option[value="Writing"]')).toBeInTheDocument()
+    expect(datalist!.querySelector('option[value="Code"]')).toBeInTheDocument()
+  })
+
+  it('save payload includes the current category from the form', () => {
+    const promptWithCategory = { ...editingPrompt, category: 'Writing' }
+    vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt: promptWithCategory })
+
+    render(React.createElement(ComposeTab))
+    fireEvent.click(screen.getByRole('button', { name: /update/i }))
+
+    expect(updateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ category: 'Writing' }) }),
+      expect.any(Object),
+    )
   })
 })
