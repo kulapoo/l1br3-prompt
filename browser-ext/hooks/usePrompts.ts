@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAppConfig } from '../contexts/AppConfig'
 import { fetchPrompts } from '../lib/api'
-import { cachePrompts, getCachedPrompts } from '../lib/storage'
+import { cachePromptsFor, clearPromptCache, getCachedPromptsFor } from '../lib/storage'
 import { useDebounce } from './useDebounce'
 import type { Prompt, Tag } from '../types'
 
@@ -27,17 +27,29 @@ export function usePrompts(
 ): UsePromptsReturn {
   const { config } = useAppConfig()
   const debouncedSearch = useDebounce(search, 300)
+  const backendUrl = config.backend.url
 
   const [cache, setCache] = useState<{ prompts: Prompt[]; tags: Tag[]; cachedAt: string } | null>(
     null,
   )
 
-  // Load cache once on mount so offline users see something immediately.
+  // Load the URL-scoped cache on mount so offline users see something immediately.
   useEffect(() => {
-    getCachedPrompts().then((entry) => {
+    getCachedPromptsFor(backendUrl).then((entry) => {
       if (entry) setCache(entry)
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // When the backend URL changes, stale cached data from the previous backend must
+  // not be shown — clear storage and reset local state immediately.
+  const prevUrlRef = useRef(backendUrl)
+  useEffect(() => {
+    if (prevUrlRef.current === backendUrl) return
+    prevUrlRef.current = backendUrl
+    setCache(null)
+    clearPromptCache()
+  }, [backendUrl])
 
   const query = useQuery({
     queryKey: [
@@ -59,7 +71,7 @@ export function usePrompts(
       // Only cache the unfiltered "home view" — filtered results would mislead
       // an offline user into thinking the cache is incomplete.
       if (!debouncedSearch && !tagFilter && !categoryFilter && favoriteFilter == null) {
-        cachePrompts(result.prompts, result.tags)
+        cachePromptsFor(config.backend.url, result.prompts, result.tags)
         setCache({ prompts: result.prompts, tags: result.tags, cachedAt: new Date().toISOString() })
       }
       return result

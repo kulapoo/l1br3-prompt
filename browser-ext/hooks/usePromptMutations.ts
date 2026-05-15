@@ -1,8 +1,18 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAppConfig } from '../contexts/AppConfig'
-import { deletePrompt, updatePrompt, recordCopy, createPrompt } from '../lib/api'
+import { deletePrompt, fetchPrompts, updatePrompt, recordCopy, createPrompt } from '../lib/api'
 import type { FetchPromptsResult } from '../lib/api'
+import { cachePromptsFor } from '../lib/storage'
 import type { Prompt, PromptCreate, PromptUpdate } from '../types'
+
+async function refreshPromptsCache(baseUrl: string): Promise<void> {
+  try {
+    const result = await fetchPrompts(baseUrl)
+    await cachePromptsFor(baseUrl, result.prompts, result.tags)
+  } catch {
+    // best-effort: the mutation already succeeded; cache will be refreshed on next online fetch
+  }
+}
 
 const PROMPTS_KEY = { queryKey: ['prompts'] }
 
@@ -26,7 +36,10 @@ export function usePromptMutations() {
         queryClient.setQueryData(key, data)
       }
     },
-    onSettled: () => queryClient.invalidateQueries(PROMPTS_KEY),
+    onSettled: () => {
+      queryClient.invalidateQueries(PROMPTS_KEY)
+      refreshPromptsCache(baseUrl)
+    },
   })
 
   const toggleFavoriteMutation = useMutation({
@@ -52,7 +65,10 @@ export function usePromptMutations() {
         queryClient.setQueryData(key, data)
       }
     },
-    onSettled: () => queryClient.invalidateQueries(PROMPTS_KEY),
+    onSettled: () => {
+      queryClient.invalidateQueries(PROMPTS_KEY)
+      refreshPromptsCache(baseUrl)
+    },
   })
 
   const recordCopyMutation = useMutation({
@@ -97,7 +113,10 @@ export function useCreatePrompt() {
 
   return useMutation({
     mutationFn: (data: PromptCreate) => createPrompt(baseUrl, data),
-    onSettled: () => queryClient.invalidateQueries(PROMPTS_KEY),
+    onSettled: () => {
+      queryClient.invalidateQueries(PROMPTS_KEY)
+      refreshPromptsCache(baseUrl)
+    },
   })
 }
 
@@ -109,6 +128,9 @@ export function useUpdatePrompt() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: PromptUpdate }) =>
       updatePrompt(baseUrl, id, data),
-    onSettled: () => queryClient.invalidateQueries(PROMPTS_KEY),
+    onSettled: () => {
+      queryClient.invalidateQueries(PROMPTS_KEY)
+      refreshPromptsCache(baseUrl)
+    },
   })
 }

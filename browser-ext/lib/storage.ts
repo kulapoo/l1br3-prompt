@@ -9,6 +9,7 @@ export interface PromptCacheEntry {
   prompts: Prompt[]
   tags: Tag[]
   cachedAt: string
+  backendUrl?: string
 }
 
 /** Persist the subset of AppConfig that should survive extension reloads. */
@@ -62,6 +63,35 @@ export async function getCachedPrompts(): Promise<PromptCacheEntry | null> {
 export async function clearPromptCache(): Promise<void> {
   try {
     await browser.storage.local.remove(PROMPT_CACHE_KEY)
+  } catch {
+    // swallow
+  }
+}
+
+/**
+ * Read the cache only if it belongs to the given backend URL.
+ * Returns null on mismatch or missing backendUrl (legacy entry treated as miss).
+ */
+export async function getCachedPromptsFor(backendUrl: string): Promise<PromptCacheEntry | null> {
+  try {
+    const result = await browser.storage.local.get(PROMPT_CACHE_KEY)
+    const cached = result[PROMPT_CACHE_KEY] as PromptCacheEntry | undefined
+    if (!cached || !cached.backendUrl || cached.backendUrl !== backendUrl) return null
+    return cached
+  } catch {
+    return null
+  }
+}
+
+/** Write a URL-scoped cache entry. Best-effort: failures are swallowed. */
+export async function cachePromptsFor(
+  backendUrl: string,
+  prompts: Prompt[],
+  tags: Tag[],
+): Promise<void> {
+  try {
+    const entry: PromptCacheEntry = { prompts, tags, cachedAt: new Date().toISOString(), backendUrl }
+    await browser.storage.local.set({ [PROMPT_CACHE_KEY]: entry })
   } catch {
     // swallow
   }

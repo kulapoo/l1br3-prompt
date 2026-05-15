@@ -75,6 +75,54 @@ beforeEach(() => {
   vi.mocked(usePromptMutations).mockReturnValue(mockMutations as unknown as ReturnType<typeof usePromptMutations>)
 })
 
+describe('PromptsTab — offline / cache banners', () => {
+  it('shows amber WifiOff banner when isFromCache is true (backend offline with cached data)', () => {
+    vi.mocked(usePrompts).mockReturnValue({
+      ...emptyPromptsReturn,
+      isFromCache: true,
+      cachedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    })
+    vi.mocked(useAppConfig).mockReturnValue({
+      ...baseCtx,
+      config: { ...mockConfig, backend: { isInstalled: false, url: 'http://localhost:8000' } },
+    } as unknown as ReturnType<typeof useAppConfig>)
+
+    render(React.createElement(PromptsTab))
+
+    expect(screen.getByText(/Offline — showing cached prompts/)).toBeInTheDocument()
+    expect(screen.queryByText(/Backend not connected/)).not.toBeInTheDocument()
+  })
+
+  it('shows slate Info banner when backend is offline and there is no cache', () => {
+    vi.mocked(usePrompts).mockReturnValue({
+      ...emptyPromptsReturn,
+      isFromCache: false,
+      cachedAt: null,
+    })
+    vi.mocked(useAppConfig).mockReturnValue({
+      ...baseCtx,
+      config: { ...mockConfig, backend: { isInstalled: false, url: 'http://localhost:8000' } },
+    } as unknown as ReturnType<typeof useAppConfig>)
+
+    render(React.createElement(PromptsTab))
+
+    expect(screen.getByText(/Backend not connected/)).toBeInTheDocument()
+    expect(screen.queryByText(/Offline — showing cached prompts/)).not.toBeInTheDocument()
+  })
+
+  it('shows no banner when backend is online (isInstalled true, isFromCache false)', () => {
+    vi.mocked(usePrompts).mockReturnValue({
+      ...emptyPromptsReturn,
+      isFromCache: false,
+    })
+
+    render(React.createElement(PromptsTab))
+
+    expect(screen.queryByText(/Offline/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Backend not connected/)).not.toBeInTheDocument()
+  })
+})
+
 describe('PromptsTab — category filter pills', () => {
   it('renders one filter pill per category from useCategories', () => {
     render(React.createElement(PromptsTab))
