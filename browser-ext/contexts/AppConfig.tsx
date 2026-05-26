@@ -31,6 +31,7 @@ export interface QuickAction {
 }
 
 export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
+export type RealtimeStatus = 'idle' | 'connecting' | 'live' | 'reconnecting' | 'error';
 
 export interface AppConfig {
   backend: {
@@ -58,6 +59,8 @@ export interface AppConfig {
     lastSyncTime: string | null;
     syncStatus: SyncStatus;
     syncError: string | null;
+    realtimeStatus: RealtimeStatus;
+    realtimeError: string | null;
   };
   viewMode: 'sidebar' | 'admin' | 'docs';
   quickActions: QuickAction[];
@@ -164,6 +167,8 @@ export const defaultConfig: AppConfig = {
     lastSyncTime: null,
     syncStatus: 'idle',
     syncError: null,
+    realtimeStatus: 'idle',
+    realtimeError: null,
   },
   viewMode: 'sidebar',
   quickActions: defaultQuickActions

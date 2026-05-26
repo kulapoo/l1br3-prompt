@@ -150,6 +150,7 @@ export function SettingsTab() {
         accessToken: session.access_token,
         refreshToken: session.refresh_token,
         syncStatus: 'idle',
+        enabled: true,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -532,7 +533,7 @@ export function SettingsTab() {
                   <div>
                     <p className="text-sm font-medium text-slate-200">Sync enabled</p>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Auto-syncs every 5 min and on tab change
+                      Realtime when open · 30-min reconciliation when closed
                     </p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
@@ -559,6 +560,24 @@ export function SettingsTab() {
                     className="font-medium text-indigo-400 hover:text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     Sync now
                   </button>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-[10px]">
+                  {config.sync.realtimeStatus === 'idle' && (
+                    <span className="text-slate-600">Realtime: off</span>
+                  )}
+                  {config.sync.realtimeStatus === 'connecting' && (
+                    <span className="text-amber-400">⟳ Realtime connecting…</span>
+                  )}
+                  {config.sync.realtimeStatus === 'live' && (
+                    <span className="text-emerald-400">● Realtime live</span>
+                  )}
+                  {config.sync.realtimeStatus === 'reconnecting' && (
+                    <span className="text-amber-400">⟳ Realtime reconnecting…</span>
+                  )}
+                  {config.sync.realtimeStatus === 'error' && (
+                    <span className="text-rose-400">✕ Realtime: {config.sync.realtimeError}</span>
+                  )}
                 </div>
 
                 <button

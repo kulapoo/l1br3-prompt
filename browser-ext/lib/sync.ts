@@ -15,7 +15,7 @@ import { SupabaseClient } from '@supabase/supabase-js'
 const LOCAL_API_PAGE_SIZE = 200
 
 // Shape of a prompt from the local FastAPI (camelCase, per schema serialization_alias)
-interface LocalPrompt {
+export interface LocalPrompt {
   id: string
   title: string
   content: string
@@ -30,7 +30,7 @@ interface LocalPrompt {
 }
 
 // Shape of a prompt row in Supabase (snake_case, matches schema.sql)
-interface RemotePrompt {
+export interface RemotePrompt {
   id: string
   user_id: string
   title: string
@@ -234,5 +234,87 @@ export class SyncService {
       .setHeader('Authorization', `Bearer ${this.accessToken}`)
 
     if (error) throw new Error(`Supabase upsert error: ${error.message}`)
+  }
+
+  // ── Realtime helpers ────────────────────────────────────────────────────────
+
+  /**
+   * Apply a single remote event with LWW semantics. Used by RealtimeSyncService
+   * to fan Realtime payloads into the local backend without a full table scan.
+   */
+  async applyRemoteEvent(
+    remote: RemotePrompt,
+  ): Promise<'created' | 'updated' | 'deleted' | 'skipped'> {
+    const local = await this._fetchLocalById(remote.id)
+
+    if (!local) {
+      if (remote.deleted_at) return 'skipped'
+      await this._createLocal(remote)
+      return 'created'
+    }
+
+    const remoteNewer = new Date(remote.updated_at) > new Date(local.updatedAt)
+    if (!remoteNewer) return 'skipped'
+
+    if (remote.deleted_at) {
+      if (!local.deletedAt) {
+        await this._softDeleteLocal(local.id)
+        return 'deleted'
+      }
+      return 'skipped'
+    }
+
+    await this._updateLocal(remote, local)
+    return 'updated'
+  }
+
+  /** Handle a hard SQL DELETE event (tombstone was already removed from Supabase). */
+  async applyHardDelete(id: string): Promise<void> {
+    const local = await this._fetchLocalById(id)
+    if (local && !local.deletedAt) {
+      await this._softDeleteLocal(id)
+    }
+  }
+
+  /**
+   * Fetch only rows updated since `iso` and apply via applyRemoteEvent.
+   * Falls back to a full performSync() when iso is null (first ever connect).
+   */
+  async catchUpSince(iso: string | null): Promise<SyncResult> {
+    if (!iso) return this.performSync()
+
+    const { data, error } = await this.supabase
+      .from('prompts')
+      .select('*')
+      .eq('user_id', this.userId)
+      .gt('updated_at', iso)
+      .setHeader('Authorization', `Bearer ${this.accessToken}`)
+
+    if (error) throw new Error(`Supabase catch-up error: ${error.message}`)
+
+    const result: SyncResult = { pushed: 0, pulled: 0, deleted: 0, errors: [] }
+    for (const row of (data ?? []) as RemotePrompt[]) {
+      try {
+        const outcome = await this.applyRemoteEvent(row)
+        if (outcome === 'created' || outcome === 'updated') result.pulled++
+        if (outcome === 'deleted') result.deleted++
+      } catch (err) {
+        result.errors.push(
+          `CatchUp ${row.id}: ${err instanceof Error ? err.message : String(err)}`,
+        )
+      }
+    }
+
+    return result
+  }
+
+  private async _fetchLocalById(id: string): Promise<LocalPrompt | null> {
+    const res = await fetch(
+      `${this.backendUrl}/api/v1/prompts/${id}?include_deleted=true`,
+    )
+    if (res.status === 404) return null
+    if (!res.ok) throw new Error(`Local API error: ${res.status}`)
+    const body = await res.json()
+    return body.data as LocalPrompt
   }
 }

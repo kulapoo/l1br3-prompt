@@ -12,7 +12,7 @@ declare const chrome: typeof browser & {
 }
 
 const SYNC_ALARM = 'l1br3-sync'
-const SYNC_INTERVAL_MINUTES = 5
+const SYNC_INTERVAL_MINUTES = 30
 
 export default defineBackground(() => {
   // Open side panel when action is clicked
@@ -29,6 +29,9 @@ export default defineBackground(() => {
     if (chrome.sidePanel) {
       chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {})
     }
+    // This alarm is the closed-sidebar fallback for sync. When the sidepanel is
+    // open, the RealtimeSyncService WebSocket subscription handles sub-second
+    // delivery; this alarm reconciles changes made while the sidebar was closed.
     browser.alarms.create(SYNC_ALARM, { periodInMinutes: SYNC_INTERVAL_MINUTES })
     void _refreshBackendHealth()
   })

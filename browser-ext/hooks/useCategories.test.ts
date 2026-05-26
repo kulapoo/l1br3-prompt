@@ -27,7 +27,7 @@ const mockConfig: AppConfig = {
   sync: {
     enabled: false, supabaseUrl: '', supabaseAnonKey: '', userId: null,
     accessToken: null, refreshToken: null, lastSyncTime: null,
-    syncStatus: 'idle', syncError: null,
+    syncStatus: 'idle', syncError: null, realtimeStatus: 'idle', realtimeError: null,
   },
   viewMode: 'sidebar',
   quickActions: [],

@@ -21,8 +21,6 @@ import {
   cachePromptsFor,
   clearPromptCache,
   getCachedPromptsFor,
-  getCachedPrompts,
-  cachePrompts,
 } from './storage'
 
 const URL_A = 'http://localhost:8000'
@@ -69,8 +67,10 @@ describe('getCachedPromptsFor — URL scoping', () => {
 
 describe('getCachedPromptsFor — legacy / malformed entries', () => {
   it('treats an entry missing backendUrl as a cache miss', async () => {
-    // Simulate a legacy entry written by the old cachePrompts helper (no backendUrl field).
-    await cachePrompts([p1], tags)
+    // Simulate a legacy entry without the backendUrl field.
+    await browser.storage.local.set({
+      l1br3_prompt_cache: { prompts: [p1], tags, cachedAt: new Date().toISOString() },
+    })
     const entry = await getCachedPromptsFor(URL_A)
     expect(entry).toBeNull()
   })
@@ -119,14 +119,5 @@ describe('CRUD-then-offline scenario (storage layer)', () => {
     expect(entry).not.toBeNull()
     expect(entry!.prompts).toHaveLength(1)
     expect(entry!.prompts[0].id).toBe('1')
-  })
-})
-
-describe('getCachedPrompts (legacy helper)', () => {
-  it('still reads entries written by cachePrompts (existing behaviour preserved)', async () => {
-    await cachePrompts([p1], tags)
-    const entry = await getCachedPrompts()
-    expect(entry).not.toBeNull()
-    expect(entry!.prompts).toHaveLength(1)
   })
 })

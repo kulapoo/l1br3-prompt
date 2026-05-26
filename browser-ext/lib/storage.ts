@@ -34,31 +34,6 @@ export async function saveConfig(config: AppConfig): Promise<void> {
   await browser.storage.local.set({ [STORAGE_KEY]: persistable })
 }
 
-/**
- * Persist the last-fetched prompts so the extension can show something
- * useful when the backend is offline. Best-effort: failures are swallowed
- * since the extension is still usable without the cache.
- */
-export async function cachePrompts(prompts: Prompt[], tags: Tag[]): Promise<void> {
-  try {
-    const entry: PromptCacheEntry = { prompts, tags, cachedAt: new Date().toISOString() }
-    await browser.storage.local.set({ [PROMPT_CACHE_KEY]: entry })
-  } catch {
-    // Cache is best-effort — swallow errors.
-  }
-}
-
-/** Read the last-cached prompts (or null if none). Never throws. */
-export async function getCachedPrompts(): Promise<PromptCacheEntry | null> {
-  try {
-    const result = await browser.storage.local.get(PROMPT_CACHE_KEY)
-    const cached = result[PROMPT_CACHE_KEY] as PromptCacheEntry | undefined
-    return cached ?? null
-  } catch {
-    return null
-  }
-}
-
 /** Drop the cached prompts (e.g. after a logout or reset). */
 export async function clearPromptCache(): Promise<void> {
   try {
