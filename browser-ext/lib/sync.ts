@@ -12,6 +12,16 @@
 
 import { SupabaseClient } from '@supabase/supabase-js'
 
+import {
+  decideAction,
+  enqueueConflict,
+  getWatermark,
+  localToSnapshot,
+  remoteToSnapshot,
+  setWatermark,
+  type Conflict,
+} from './conflicts'
+
 const LOCAL_API_PAGE_SIZE = 200
 
 // Shape of a prompt from the local FastAPI (camelCase, per schema serialization_alias)
@@ -81,62 +91,75 @@ export class SyncService {
 
     const remoteById = new Map(remotePrompts.map((p) => [p.id, p]))
     const localById = new Map(localPrompts.map((p) => [p.id, p]))
+    const seen = new Set<string>()
 
-    // 3. Process local prompts → push to Supabase where local is newer
     for (const local of localPrompts) {
+      seen.add(local.id)
+      const remote = remoteById.get(local.id)
       try {
-        const remote = remoteById.get(local.id)
-
-        if (!remote) {
-          // New local prompt — upsert to Supabase
-          await this._upsertRemote(local)
-          result.pushed++
-        } else {
-          const localNewer = new Date(local.updatedAt) > new Date(remote.updated_at)
-
-          if (localNewer) {
-            await this._upsertRemote(local)
-            result.pushed++
-          }
-          // If remote is newer, handle below
-        }
+        const conflicts = await this._reconcile(local, remote)
+        if (conflicts === 'pushed') result.pushed++
+        else if (conflicts === 'pulled') result.pulled++
+        else if (conflicts === 'deleted') result.deleted++
       } catch (err) {
-        result.errors.push(`Push ${local.id}: ${err instanceof Error ? err.message : String(err)}`)
+        result.errors.push(`Sync ${local.id}: ${err instanceof Error ? err.message : String(err)}`)
       }
     }
 
-    // 4. Process remote prompts → pull to local where remote is newer
     for (const remote of remotePrompts) {
+      if (seen.has(remote.id)) continue
       try {
-        const local = localById.get(remote.id)
-
-        if (!local) {
-          // New remote prompt — create locally
-          await this._createLocal(remote)
-          result.pulled++
-        } else {
-          const remoteNewer = new Date(remote.updated_at) > new Date(local.updatedAt)
-
-          if (remoteNewer) {
-            if (remote.deleted_at) {
-              // Remote deleted — soft-delete locally if not already
-              if (!local.deletedAt) {
-                await this._softDeleteLocal(local.id)
-                result.deleted++
-              }
-            } else {
-              // Remote updated — apply to local
-              await this._updateLocal(remote, local)
-              result.pulled++
-            }
-          }
-        }
+        const conflicts = await this._reconcile(undefined, remote)
+        if (conflicts === 'pulled') result.pulled++
+        else if (conflicts === 'deleted') result.deleted++
       } catch (err) {
-        result.errors.push(`Pull ${remote.id}: ${err instanceof Error ? err.message : String(err)}`)
+        result.errors.push(`Sync ${remote.id}: ${err instanceof Error ? err.message : String(err)}`)
       }
     }
 
     return result
+  }
+
+  /**
+   * Reconcile one (local, remote) pair using watermark-based conflict detection.
+   * Returns the outcome for SyncResult bookkeeping (or 'skipped').
+   */
+  private async _reconcile(
+    local: LocalPrompt | undefined,
+    remote: RemotePrompt | undefined,
+  ): Promise<'pushed' | 'pulled' | 'deleted' | 'skipped'> {
+    const id = (local?.id ?? remote?.id)!
+    const base = await getWatermark(id)
+    const action = decideAction(local, remote, base)
+
+    if (action === 'push' && local) {
+      await this._upsertRemote(local)
+      await setWatermark(id, local.updatedAt)
+      return 'pushed'
+    }
+    if (action === 'pull' && remote) {
+      if (local) await this._updateLocal(remote, local)
+      else await this._createLocal(remote)
+      await setWatermark(id, remote.updated_at)
+      return 'pulled'
+    }
+    if (action === 'softDeleteLocal' && remote && local && !local.deletedAt) {
+      await this._softDeleteLocal(local.id)
+      await setWatermark(id, remote.updated_at)
+      return 'deleted'
+    }
+    if (action === 'conflict' && local && remote) {
+      await enqueueConflict({
+        id,
+        promptId: id,
+        local: localToSnapshot(local),
+        remote: remoteToSnapshot(remote),
+        baseUpdatedAt: base,
+        detectedAt: new Date().toISOString(),
+      } satisfies Conflict)
+      return 'skipped'
+    }
+    return 'skipped'
   }
 
   // ── Local API helpers ───────────────────────────────────────────────────────
@@ -244,28 +267,44 @@ export class SyncService {
    */
   async applyRemoteEvent(
     remote: RemotePrompt,
-  ): Promise<'created' | 'updated' | 'deleted' | 'skipped'> {
+  ): Promise<'created' | 'updated' | 'deleted' | 'conflict' | 'skipped'> {
     const local = await this._fetchLocalById(remote.id)
 
     if (!local) {
       if (remote.deleted_at) return 'skipped'
       await this._createLocal(remote)
+      await setWatermark(remote.id, remote.updated_at)
       return 'created'
     }
 
-    const remoteNewer = new Date(remote.updated_at) > new Date(local.updatedAt)
-    if (!remoteNewer) return 'skipped'
+    const base = await getWatermark(remote.id)
+    const action = decideAction(local, remote, base)
 
-    if (remote.deleted_at) {
+    if (action === 'pull') {
+      await this._updateLocal(remote, local)
+      await setWatermark(remote.id, remote.updated_at)
+      return 'updated'
+    }
+    if (action === 'softDeleteLocal') {
       if (!local.deletedAt) {
         await this._softDeleteLocal(local.id)
+        await setWatermark(remote.id, remote.updated_at)
         return 'deleted'
       }
       return 'skipped'
     }
-
-    await this._updateLocal(remote, local)
-    return 'updated'
+    if (action === 'conflict') {
+      await enqueueConflict({
+        id: remote.id,
+        promptId: remote.id,
+        local: localToSnapshot(local),
+        remote: remoteToSnapshot(remote),
+        baseUpdatedAt: base,
+        detectedAt: new Date().toISOString(),
+      } satisfies Conflict)
+      return 'conflict'
+    }
+    return 'skipped'
   }
 
   /** Handle a hard SQL DELETE event (tombstone was already removed from Supabase). */

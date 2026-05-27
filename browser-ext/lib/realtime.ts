@@ -147,7 +147,7 @@ export class RealtimeSyncService {
         this.opts.onEvent({ op, id: record.id })
       } else {
         const outcome = await svc.applyRemoteEvent(record)
-        if (outcome !== 'skipped') {
+        if (outcome !== 'skipped' && outcome !== 'conflict') {
           this.opts.onEvent({ op, id: record.id })
         }
       }

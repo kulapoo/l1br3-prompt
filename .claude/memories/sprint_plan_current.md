@@ -13,7 +13,7 @@ Created: 2026-04-12
 | Phase | Status | Completion |
 |-------|--------|------------|
 | 1 — Local Backend | Done | 100% |
-| 2 — Sidebar UI | In Progress | ~95% |
+| 2 — Sidebar UI | Done | 100% |
 | 3 — Context-Aware Suggestions | In Progress | ~70% |
 | 4 — Local AI (Ollama) | Done | 100% |
 | 5 — Cloud Sync (Supabase) | In Progress | ~85% |
@@ -90,7 +90,7 @@ Finish the browser extension MVP by wiring existing UI components to the backend
 - Category filter in PromptsTab
 - **Files**: `browser-ext/components/ComposeTab.tsx`, `browser-ext/components/PromptsTab.tsx`, `browser-ext/lib/api.ts`
 - **Complexity**: Low
-- **Status**: Not started
+- **Status**: Done (2026-05-15) — useCategories hook, datalist-backed ComposeTab input, emerald filter pills in PromptsTab, offline cache fallback; 12 tests across useCategories.test.ts, PromptsTab.test.tsx, ComposeTab.test.tsx
 
 ### F8. Offline Prompt Cache
 - Cache last-fetched prompts in `browser.storage.local`
@@ -98,7 +98,7 @@ Finish the browser extension MVP by wiring existing UI components to the backend
 - Invalidate on CRUD operations
 - **Files**: `browser-ext/components/PromptsTab.tsx`, `browser-ext/lib/storage.ts`
 - **Complexity**: Low
-- **Status**: Not started
+- **Status**: Done (2026-05-18) — ACs were met by F1/F2/F7; verified end-to-end and removed dead legacy unscoped cache helpers (cachePrompts, getCachedPrompts)
 
 ---
 
@@ -106,11 +106,11 @@ Finish the browser extension MVP by wiring existing UI components to the backend
 
 ### F9. Supabase Realtime Sync
 - Replace 5-min polling with Realtime WebSocket subscription
-- **Complexity**: High | **Status**: Not started
+- **Complexity**: High | **Status**: Done (2026-05-27) — WebSocket push + 30-min fallback alarm, LWW merge, echo suppression, event buffering, realtime status indicators; 99 API + 108 ext tests green, tsc clean, Chrome build clean
 
 ### F10. Sync Conflict Resolution UI
 - Detect concurrent edits, show merge dialog
-- **Complexity**: High | **Status**: Not started
+- **Complexity**: High | **Status**: In progress — starting Phase 1 (data model + detection)
 
 ### F11. Admin/Dashboard View Mode
 - Wire `AdminLayout.tsx` to viewMode config; prompt analytics
