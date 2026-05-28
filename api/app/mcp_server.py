@@ -20,6 +20,7 @@ Set L1BR3_MCP_ALLOW_WRITE=1 to enable them.
 
 import json
 import os
+from collections.abc import Callable
 
 from mcp.server.fastmcp import FastMCP
 
@@ -40,16 +41,10 @@ def _require_write() -> None:
         )
 
 
-# ── Read-only tools ────────────────────────────────────────────────────────────
+# ── Read-only tool implementations (callable without MCP transport) ───────────
 
 
-@mcp.tool()
-def list_prompts(query: str | None = None, tag: str | None = None) -> str:
-    """
-    List stored prompts with optional full-text search and tag filter.
-
-    Returns a JSON array of prompt objects.
-    """
+def _list_prompts(query: str | None = None, tag: str | None = None) -> str:
     with SessionLocal() as db:
         repo = PromptRepository(db)
         prompts, _ = repo.find_all(search=query, tag=tag, limit=50)
@@ -67,13 +62,7 @@ def list_prompts(query: str | None = None, tag: str | None = None) -> str:
     return json.dumps(result, ensure_ascii=False)
 
 
-@mcp.tool()
-def get_prompt(id: str) -> str:
-    """
-    Get a single prompt by its ID.
-
-    Returns a JSON object with the prompt's fields.
-    """
+def _get_prompt(id: str) -> str:
     with SessionLocal() as db:
         repo = PromptRepository(db)
         prompt = repo.find_by_id(id)
@@ -90,14 +79,7 @@ def get_prompt(id: str) -> str:
     return json.dumps(result, ensure_ascii=False)
 
 
-@mcp.tool()
-def render_prompt(id: str, variables: dict | None = None) -> str:
-    """
-    Render a prompt template with the given variables substituted.
-
-    Variables should match {{placeholder}} names in the prompt content.
-    Returns the rendered plain-text string.
-    """
+def _render_prompt(id: str, variables: dict | None = None) -> str:
     vars_ = variables or {}
     with SessionLocal() as db:
         repo = PromptRepository(db)
@@ -106,6 +88,40 @@ def render_prompt(id: str, variables: dict | None = None) -> str:
             raise ValueError(f"Prompt {id!r} not found")
         rendered = _template_service.render(prompt.content, vars_)
     return rendered
+
+
+# ── Read-only tools ────────────────────────────────────────────────────────────
+
+
+@mcp.tool()
+def list_prompts(query: str | None = None, tag: str | None = None) -> str:
+    """
+    List stored prompts with optional full-text search and tag filter.
+
+    Returns a JSON array of prompt objects.
+    """
+    return _list_prompts(query=query, tag=tag)
+
+
+@mcp.tool()
+def get_prompt(id: str) -> str:
+    """
+    Get a single prompt by its ID.
+
+    Returns a JSON object with the prompt's fields.
+    """
+    return _get_prompt(id=id)
+
+
+@mcp.tool()
+def render_prompt(id: str, variables: dict | None = None) -> str:
+    """
+    Render a prompt template with the given variables substituted.
+
+    Variables should match {{placeholder}} names in the prompt content.
+    Returns the rendered plain-text string.
+    """
+    return _render_prompt(id=id, variables=variables)
 
 
 # ── Write tools (gated by L1BR3_MCP_ALLOW_WRITE) ──────────────────────────────
@@ -159,6 +175,20 @@ def delete_prompt(id: str) -> str:
         if not deleted:
             raise ValueError(f"Prompt {id!r} not found")
     return json.dumps({"deleted": id})
+
+
+# ── Tool registries (used by the HTTP bridge in routes/mcp.py) ────────────────
+
+READ_TOOLS: dict[str, Callable] = {
+    "list_prompts": _list_prompts,
+    "get_prompt": _get_prompt,
+    "render_prompt": _render_prompt,
+}
+
+WRITE_TOOLS: dict[str, Callable] = {
+    "create_prompt": create_prompt,
+    "delete_prompt": delete_prompt,
+}
 
 
 def main() -> None:

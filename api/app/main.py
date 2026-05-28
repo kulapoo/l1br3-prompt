@@ -9,6 +9,7 @@ from app.routes.ai import router as ai_router
 from app.routes.categories import router as categories_router
 from app.routes.generate import router as generate_router
 from app.routes.health import router as health_router
+from app.routes.mcp import router as mcp_router
 from app.routes.prompts import router as prompts_router
 from app.routes.suggestions import router as suggestions_router
 
@@ -61,6 +62,7 @@ app.include_router(categories_router)
 app.include_router(suggestions_router)
 app.include_router(ai_router)
 app.include_router(generate_router)
+app.include_router(mcp_router)
 
 
 def run() -> None:

@@ -282,6 +282,44 @@ export async function fetchCategories(baseUrl: string): Promise<string[]> {
   return json.data ?? []
 }
 
+// ── Modifier sources (api / mcp) ─────────────────────────────────────────────
+
+const MODIFIER_TIMEOUT_MS = 30_000
+
+export async function callApiSource(
+  url: string,
+  method: string,
+  body: { content: string; variables: Record<string, string> },
+): Promise<string> {
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(MODIFIER_TIMEOUT_MS),
+  })
+  if (!res.ok) throw new Error(`API source request failed (${res.status}): ${res.statusText}`)
+  const json = (await res.json()) as ApiResponse<{ rendered: string }>
+  if (!json.success || !json.data) throw new Error(json.error ?? 'API source error')
+  return json.data.rendered
+}
+
+export async function callMcpTool(
+  baseUrl: string,
+  toolName: string,
+  args: Record<string, unknown>,
+): Promise<string> {
+  const res = await fetch(`${baseUrl}/api/v1/mcp/call`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool: toolName, args }),
+    signal: AbortSignal.timeout(MODIFIER_TIMEOUT_MS),
+  })
+  if (!res.ok) throw new Error(`MCP call failed (${res.status}): ${res.statusText}`)
+  const json = (await res.json()) as ApiResponse<{ result: string }>
+  if (!json.success || !json.data) throw new Error(json.error ?? 'MCP tool error')
+  return json.data.result
+}
+
 // ── Template processing ───────────────────────────────────────────────────────
 
 export async function processTemplate(

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { streamGenerate, QuotaExceededError, processTemplate } from '../lib/api';
-import { composePromptFor } from '../lib/compose';
+import { streamGenerate, QuotaExceededError, processTemplate, callApiSource, callMcpTool } from '../lib/api';
+import { composePromptFor, shapeApiBody, shapeMcpArgs } from '../lib/compose';
 import { useCreatePrompt, useUpdatePrompt } from '../hooks/usePromptMutations';
 import { useCategories } from '../hooks/useCategories';
 import {
@@ -50,6 +50,7 @@ export function ComposeTab() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [preview, setPreview] = useState('');
   const [quotaError, setQuotaError] = useState<string | null>(null);
+  const [modifierError, setModifierError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const suggestRef = useRef<HTMLDivElement>(null);
   const enabledActions = config.quickActions.filter((a) => a.enabled);
@@ -240,8 +241,43 @@ export function ComposeTab() {
       return;
     }
 
+    setModifierError(null);
+
+    if (action.source.type === 'api') {
+      try {
+        const result = await callApiSource(
+          action.source.url,
+          action.source.method ?? 'POST',
+          shapeApiBody(editor?.getText() ?? '', variables),
+        );
+        handleInsertText(result);
+      } catch {
+        handleInsertText(action.insertText);
+        setModifierError('API modifier failed — using static fallback.');
+      }
+      return;
+    }
+
+    if (action.source.type === 'mcp') {
+      if (!config.backend.isInstalled) {
+        handleInsertText(action.insertText);
+        return;
+      }
+      try {
+        const result = await callMcpTool(
+          config.backend.url,
+          action.source.toolName,
+          shapeMcpArgs(editor?.getText() ?? '', variables),
+        );
+        handleInsertText(result);
+      } catch {
+        handleInsertText(action.insertText);
+        setModifierError('MCP modifier failed — using static fallback.');
+      }
+      return;
+    }
+
     // 'local' source — insert static text
-    // 'api' and 'mcp' sources are TODO for Phase 5/6
     handleInsertText(action.insertText);
   };
 
@@ -367,6 +403,14 @@ export function ComposeTab() {
         <div className="mx-4 mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-start gap-2">
           <span className="text-amber-400 text-[10px] leading-relaxed">{quotaError}</span>
           <button onClick={() => setQuotaError(null)} className="ml-auto text-amber-500/60 hover:text-amber-400 shrink-0">
+            <X size={12} />
+          </button>
+        </div>
+      )}
+      {modifierError && (
+        <div className="mx-4 mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-start gap-2">
+          <span className="text-amber-400 text-[10px] leading-relaxed">{modifierError}</span>
+          <button onClick={() => setModifierError(null)} className="ml-auto text-amber-500/60 hover:text-amber-400 shrink-0">
             <X size={12} />
           </button>
         </div>

@@ -953,25 +953,50 @@ export function SettingsTab() {
 
                   {/* Source-specific fields */}
                   {editingAction.source?.type === 'api' &&
-                <div>
-                      <label className="block text-[10px] font-medium text-slate-400 mb-1 uppercase tracking-wider">
-                        API Endpoint URL
-                      </label>
-                      <input
-                    type="text"
-                    value={(editingAction.source as {type: 'api'; url: string}).url || ''}
-                    onChange={(e) =>
-                    setEditingAction({
-                      ...editingAction,
-                      source: {
-                        type: 'api',
-                        url: e.target.value
+                <div className="space-y-2">
+                      <div>
+                        <label className="block text-[10px] font-medium text-slate-400 mb-1 uppercase tracking-wider">
+                          API Endpoint URL
+                        </label>
+                        <input
+                      type="text"
+                      value={(editingAction.source as {type: 'api'; url: string; method?: string}).url || ''}
+                      onChange={(e) =>
+                      setEditingAction({
+                        ...editingAction,
+                        source: {
+                          ...(editingAction.source as {type: 'api'; url: string; method?: string}),
+                          type: 'api',
+                          url: e.target.value
+                        }
+                      })
                       }
-                    })
-                    }
-                    placeholder="https://api.example.com/enhance"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder:text-slate-600 font-mono" />
-
+                      placeholder="https://api.example.com/enhance"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder:text-slate-600 font-mono" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-medium text-slate-400 mb-1 uppercase tracking-wider">
+                          Method
+                        </label>
+                        <div className="flex gap-1">
+                          {(['POST', 'GET'] as const).map((m) => {
+                            const src = editingAction.source as {type: 'api'; url: string; method?: string};
+                            const isActive = (src.method ?? 'POST') === m;
+                            return (
+                              <button
+                                key={m}
+                                type="button"
+                                onClick={() => setEditingAction({
+                                  ...editingAction,
+                                  source: { ...src, type: 'api', method: m }
+                                })}
+                                className={`px-3 py-1 rounded text-xs font-mono font-medium transition-all border ${isActive ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/40' : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700'}`}>
+                                {m}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                 }
                   {editingAction.source?.type === 'ollama' &&

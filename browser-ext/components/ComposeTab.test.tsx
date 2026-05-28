@@ -44,9 +44,15 @@ vi.mock('../lib/api', () => ({
   streamGenerate: vi.fn(),
   QuotaExceededError: class extends Error {},
   processTemplate: vi.fn(),
+  callApiSource: vi.fn(),
+  callMcpTool: vi.fn(),
 }))
 
-vi.mock('../lib/compose', () => ({ composePromptFor: vi.fn() }))
+vi.mock('../lib/compose', () => ({
+  composePromptFor: vi.fn(),
+  shapeApiBody: vi.fn((content, variables) => ({ content, variables })),
+  shapeMcpArgs: vi.fn((content, variables) => ({ content, ...variables })),
+}))
 
 vi.mock('../contexts/AppConfig', () => ({ useAppConfig: vi.fn() }))
 vi.mock('../hooks/usePromptMutations', () => ({
@@ -58,6 +64,7 @@ vi.mock('../hooks/useCategories', () => ({ useCategories: vi.fn() }))
 import { useAppConfig } from '../contexts/AppConfig'
 import * as mutations from '../hooks/usePromptMutations'
 import { useCategories } from '../hooks/useCategories'
+import * as api from '../lib/api'
 import { ComposeTab } from './ComposeTab'
 
 const mockConfig: AppConfig = {
@@ -248,5 +255,99 @@ describe('ComposeTab — category', () => {
       expect.objectContaining({ data: expect.objectContaining({ category: 'Writing' }) }),
       expect.any(Object),
     )
+  })
+})
+
+describe('ComposeTab — modifier actions', () => {
+  const apiAction = {
+    id: 'a1', label: 'Enhance', description: '', insertText: 'fallback', color: '#fff', enabled: true,
+    source: { type: 'api' as const, url: 'http://example.com/enhance', method: 'POST' },
+  }
+  const mcpAction = {
+    id: 'a2', label: 'List', description: '', insertText: 'fallback', color: '#fff', enabled: true,
+    source: { type: 'mcp' as const, toolName: 'list_prompts' },
+  }
+
+  beforeEach(() => {
+    vi.mocked(api.callApiSource).mockReset()
+    vi.mocked(api.callMcpTool).mockReset()
+  })
+
+  async function openModifiersPanel() {
+    await act(async () => {
+      fireEvent.click(screen.getByText('Modifiers', { selector: 'span, button' }))
+    })
+  }
+
+  it('api modifier inserts data.rendered on success', async () => {
+    vi.mocked(api.callApiSource).mockResolvedValue('improved text')
+    vi.mocked(useAppConfig).mockReturnValue({
+      ...baseContext,
+      config: { ...mockConfig, quickActions: [apiAction] },
+    })
+
+    render(React.createElement(ComposeTab))
+    await openModifiersPanel()
+    await act(async () => {
+      fireEvent.click(screen.getByText('Enhance'))
+    })
+
+    expect(vi.mocked(api.callApiSource)).toHaveBeenCalledWith(
+      'http://example.com/enhance',
+      'POST',
+      expect.objectContaining({ content: expect.any(String) }),
+    )
+  })
+
+  it('api modifier falls back to insertText on failure', async () => {
+    vi.mocked(api.callApiSource).mockRejectedValue(new Error('network error'))
+    vi.mocked(useAppConfig).mockReturnValue({
+      ...baseContext,
+      config: { ...mockConfig, quickActions: [apiAction] },
+    })
+
+    render(React.createElement(ComposeTab))
+    await openModifiersPanel()
+    await act(async () => {
+      fireEvent.click(screen.getByText('Enhance'))
+    })
+
+    expect(screen.getByText(/API modifier failed/)).toBeInTheDocument()
+  })
+
+  it('mcp modifier inserts result on success', async () => {
+    vi.mocked(api.callMcpTool).mockResolvedValue('mcp result')
+    vi.mocked(useAppConfig).mockReturnValue({
+      ...baseContext,
+      config: { ...mockConfig, quickActions: [mcpAction] },
+    })
+
+    render(React.createElement(ComposeTab))
+    await openModifiersPanel()
+    await act(async () => {
+      fireEvent.click(screen.getByText('List'))
+    })
+
+    expect(vi.mocked(api.callMcpTool)).toHaveBeenCalledWith(
+      'http://localhost:8000',
+      'list_prompts',
+      expect.objectContaining({ content: expect.any(String) }),
+    )
+  })
+
+  it('mcp modifier falls back to insertText on failure', async () => {
+    vi.mocked(api.callMcpTool).mockRejectedValue(new Error('tool error'))
+    vi.mocked(useAppConfig).mockReturnValue({
+      ...baseContext,
+      config: { ...mockConfig, quickActions: [mcpAction] },
+    })
+
+    render(React.createElement(ComposeTab))
+    await openModifiersPanel()
+    await act(async () => {
+      fireEvent.click(screen.getByText('List'))
+    })
+
+    expect(screen.getByText(/MCP modifier failed/)).toBeInTheDocument()
   })
 })

@@ -13,3 +13,17 @@ export function composePromptFor(action: QuickAction, editorText: string): strin
   if (!content) return instruction
   return `${instruction}\n\n${content}`
 }
+
+export function shapeApiBody(
+  content: string,
+  variables: Record<string, string>,
+): { content: string; variables: Record<string, string> } {
+  return { content, variables }
+}
+
+export function shapeMcpArgs(
+  content: string,
+  variables: Record<string, string>,
+): Record<string, unknown> {
+  return { content, ...variables }
+}
