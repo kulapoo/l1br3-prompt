@@ -42,3 +42,28 @@ class PromptResponse(BaseModel):
     created_at: datetime = Field(serialization_alias="createdAt")
     updated_at: datetime = Field(serialization_alias="updatedAt")
     deleted_at: datetime | None = Field(None, serialization_alias="deletedAt")
+
+
+class PromptStatItem(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    title: str
+    usage_count: int = Field(serialization_alias="usageCount")
+    last_used: str | None = Field(None, serialization_alias="lastUsed")
+
+
+class CategoryCount(BaseModel):
+    category: str | None
+    count: int
+
+
+class PromptStats(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    total_prompts: int = Field(serialization_alias="totalPrompts")
+    total_copies: int = Field(serialization_alias="totalCopies")
+    favorites_count: int = Field(serialization_alias="favoritesCount")
+    top_used: list[PromptStatItem] = Field(serialization_alias="topUsed")
+    stale: list[PromptStatItem]
+    by_category: list[CategoryCount] = Field(serialization_alias="byCategory")

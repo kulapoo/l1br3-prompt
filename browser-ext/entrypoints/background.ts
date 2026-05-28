@@ -56,7 +56,26 @@ export default defineBackground(() => {
       _maybeSyncBackground()
     }
   })
+
+  // Sidepanel asks us to open the admin workbench in a new tab.
+  browser.runtime.onMessage.addListener((message: unknown) => {
+    if (typeof message === 'object' && message !== null && (message as { type?: string }).type === 'OPEN_ADMIN') {
+      void openAdminTab()
+    }
+  })
 })
+
+/**
+ * Open the admin workbench page in a new browser tab. Exported for testing.
+ */
+export async function openAdminTab(): Promise<void> {
+  try {
+    const url = browser.runtime.getURL('/admin.html')
+    await browser.tabs.create({ url })
+  } catch {
+    // Tab API failures are silent — user can retry from Settings.
+  }
+}
 
 /**
  * One-shot probe of the local backend, mirroring the in-sidebar

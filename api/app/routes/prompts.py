@@ -3,7 +3,14 @@ from sqlalchemy.orm import Session
 
 from app.db.engine import get_db
 from app.schemas.envelope import ApiResponse
-from app.schemas.prompt import PromptCreate, PromptResponse, PromptUpdate
+from app.schemas.prompt import (
+    CategoryCount,
+    PromptCreate,
+    PromptResponse,
+    PromptStatItem,
+    PromptStats,
+    PromptUpdate,
+)
 from app.schemas.tag import TagCreate
 from app.services.prompt_service import PromptService
 
@@ -46,6 +53,27 @@ def create_prompt(data: PromptCreate, db: Session = Depends(get_db)):
     service = PromptService(db)
     prompt = service.create_prompt(data)
     return ApiResponse.ok(_to_response(prompt))
+
+
+@router.get("/stats", response_model=ApiResponse[PromptStats])
+def get_stats(db: Session = Depends(get_db)):
+    service = PromptService(db)
+    raw = service.get_stats()
+    stats = PromptStats(
+        total_prompts=raw["total_prompts"],
+        total_copies=raw["total_copies"],
+        favorites_count=raw["favorites_count"],
+        top_used=[
+            PromptStatItem(id=p.id, title=p.title, usage_count=p.usage_count, last_used=p.last_used)
+            for p in raw["top_used"]
+        ],
+        stale=[
+            PromptStatItem(id=p.id, title=p.title, usage_count=p.usage_count, last_used=p.last_used)
+            for p in raw["stale"]
+        ],
+        by_category=[CategoryCount(category=c, count=n) for c, n in raw["by_category"]],
+    )
+    return ApiResponse.ok(stats)
 
 
 @router.get("/{id}", response_model=ApiResponse[PromptResponse])

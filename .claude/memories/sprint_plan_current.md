@@ -110,11 +110,11 @@ Finish the browser extension MVP by wiring existing UI components to the backend
 
 ### F10. Sync Conflict Resolution UI
 - Detect concurrent edits, show merge dialog
-- **Complexity**: High | **Status**: In progress — starting Phase 1 (data model + detection)
+- **Complexity**: High | **Status**: Done (2026-05-28) — watermark-based conflict detection (conflicts.ts, decideAction, enqueueConflict), ConflictDialog side-by-side diff with keep/accept/manual-merge, useConflicts hook, amber badge in Sidebar; 156 ext tests green, tsc clean, Chrome build clean
 
 ### F11. Admin/Dashboard View Mode
 - Wire `AdminLayout.tsx` to viewMode config; prompt analytics
-- **Complexity**: Medium | **Status**: Not started
+- **Complexity**: Medium | **Status**: Done (2026-05-28) — GET /api/v1/prompts/stats (7 tests), usePromptStats hook + cache, AnalyticsPanel (KPIs / top-used / stale / by-category), AdminLayout tabbed Suggest|Stats right column, dedicated `entrypoints/admin/` WXT page, Settings "Open Admin Mode" → background OPEN_ADMIN → new tab; viewMode now persisted, 'docs' literal dropped. 106 API + 156 ext tests green, Chrome build emits admin.html + sidepanel.html.
 
 ### F12. API/MCP Modifier Sources
 - Wire `api` and `mcp` modifier sources in ComposeTab (line 220 TODO)

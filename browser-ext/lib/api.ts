@@ -1,4 +1,4 @@
-import type { AiStatus, GenerateRequest, ProcessTemplateResponse, Prompt, PromptCreate, PromptUpdate, Suggestion, SuggestContext, Tag } from '../types'
+import type { AiStatus, GenerateRequest, ProcessTemplateResponse, Prompt, PromptCreate, PromptStats, PromptUpdate, Suggestion, SuggestContext, Tag } from '../types'
 
 /** Thrown when the cloud provider returns a quota_exceeded error frame. */
 export class QuotaExceededError extends Error {
@@ -261,6 +261,14 @@ export async function recordCopy(baseUrl: string, id: string): Promise<Prompt> {
   if (!res.ok) throw new Error(`Record copy failed: ${res.statusText}`)
   const json: ApiResponse<Prompt> = await res.json()
   if (!json.success || !json.data) throw new Error(json.error ?? 'Record copy error')
+  return json.data
+}
+
+export async function fetchPromptStats(baseUrl: string): Promise<PromptStats> {
+  const res = await fetch(`${baseUrl}/api/v1/prompts/stats`)
+  if (!res.ok) throw new Error(`Stats request failed: ${res.statusText}`)
+  const json: ApiResponse<PromptStats> = await res.json()
+  if (!json.success || !json.data) throw new Error(json.error ?? 'Stats endpoint error')
   return json.data
 }
 

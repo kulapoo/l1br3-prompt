@@ -78,6 +78,9 @@ class PromptService:
         self.db.refresh(prompt)
         return prompt
 
+    def get_stats(self) -> dict:
+        return self.prompt_repo.stats()
+
     def add_tags(self, id: str, tag_creates: list) -> Prompt | None:
         prompt = self.prompt_repo.find_by_id(id)
         if not prompt:

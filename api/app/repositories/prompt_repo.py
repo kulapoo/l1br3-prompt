@@ -1,11 +1,15 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
-from sqlalchemy import text
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from app.models.prompt import Prompt
 from app.models.tag import Tag
 from app.schemas.prompt import PromptCreate, PromptUpdate
+
+STALE_DAYS = 30
+TOP_USED_LIMIT = 5
+STALE_LIMIT = 5
 
 
 class PromptRepository:
@@ -99,6 +103,44 @@ class PromptRepository:
         self.db.flush()
         self.db.refresh(prompt)
         return prompt
+
+    def stats(self) -> dict:
+        live = self.db.query(Prompt).filter(Prompt.deleted_at.is_(None))
+
+        total_prompts = live.count()
+        total_copies = live.with_entities(func.coalesce(func.sum(Prompt.usage_count), 0)).scalar() or 0
+        favorites_count = live.filter(Prompt.is_favorite.is_(True)).count()
+
+        top_used = (
+            live.filter(Prompt.usage_count > 0)
+            .order_by(Prompt.usage_count.desc(), Prompt.title.asc())
+            .limit(TOP_USED_LIMIT)
+            .all()
+        )
+
+        threshold_iso = (datetime.now(UTC) - timedelta(days=STALE_DAYS)).isoformat()
+        stale = (
+            live.filter((Prompt.last_used.is_(None)) | (Prompt.last_used < threshold_iso))
+            .order_by(Prompt.last_used.asc().nulls_first(), Prompt.title.asc())
+            .limit(STALE_LIMIT)
+            .all()
+        )
+
+        by_category_rows = (
+            live.with_entities(Prompt.category, func.count(Prompt.id))
+            .group_by(Prompt.category)
+            .order_by(func.count(Prompt.id).desc(), Prompt.category.asc())
+            .all()
+        )
+
+        return {
+            "total_prompts": total_prompts,
+            "total_copies": int(total_copies),
+            "favorites_count": favorites_count,
+            "top_used": top_used,
+            "stale": stale,
+            "by_category": [(c, n) for c, n in by_category_rows],
+        }
 
     def add_tags(self, prompt: Prompt, tags: list[Tag]) -> Prompt:
         existing_ids = {t.id for t in prompt.tags}

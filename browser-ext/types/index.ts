@@ -62,6 +62,27 @@ export interface ProcessTemplateResponse {
   variables: string[];
 }
 
+export interface PromptStatItem {
+  id: string;
+  title: string;
+  usageCount: number;
+  lastUsed: string | null;
+}
+
+export interface CategoryCount {
+  category: string | null;
+  count: number;
+}
+
+export interface PromptStats {
+  totalPrompts: number;
+  totalCopies: number;
+  favoritesCount: number;
+  topUsed: PromptStatItem[];
+  stale: PromptStatItem[];
+  byCategory: CategoryCount[];
+}
+
 export interface AiStatus {
   ollama: {
     reachable: boolean;

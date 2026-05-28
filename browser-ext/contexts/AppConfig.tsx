@@ -62,7 +62,7 @@ export interface AppConfig {
     realtimeStatus: RealtimeStatus;
     realtimeError: string | null;
   };
-  viewMode: 'sidebar' | 'admin' | 'docs';
+  viewMode: 'sidebar' | 'admin';
   quickActions: QuickAction[];
 }
 

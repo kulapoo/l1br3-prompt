@@ -1,9 +1,10 @@
 import { AppConfig } from '../contexts/AppConfig'
-import type { Prompt, Tag } from '../types'
+import type { Prompt, PromptStats, Tag } from '../types'
 
 const STORAGE_KEY = 'l1br3_config'
 const PROMPT_CACHE_KEY = 'l1br3_prompt_cache'
 const CATEGORY_CACHE_KEY = 'l1br3_category_cache'
+const STATS_CACHE_KEY = 'l1br3_stats_cache'
 
 export interface PromptCacheEntry {
   prompts: Prompt[]
@@ -29,7 +30,7 @@ export async function saveConfig(config: AppConfig): Promise<void> {
     },
     sync: config.sync,
     quickActions: config.quickActions,
-    // viewMode intentionally excluded — always reopen in sidebar mode
+    viewMode: config.viewMode,
   }
   await browser.storage.local.set({ [STORAGE_KEY]: persistable })
 }
@@ -78,6 +79,23 @@ export async function cacheCategories(categories: string[]): Promise<void> {
     await browser.storage.local.set({ [CATEGORY_CACHE_KEY]: categories })
   } catch {
     // swallow
+  }
+}
+
+export async function cacheStats(stats: PromptStats): Promise<void> {
+  try {
+    await browser.storage.local.set({ [STATS_CACHE_KEY]: stats })
+  } catch {
+    // swallow
+  }
+}
+
+export async function getCachedStats(): Promise<PromptStats | null> {
+  try {
+    const result = await browser.storage.local.get(STATS_CACHE_KEY)
+    return (result[STATS_CACHE_KEY] as PromptStats | undefined) ?? null
+  } catch {
+    return null
   }
 }
 
