@@ -14,7 +14,7 @@ Created: 2026-04-12
 |-------|--------|------------|
 | 1 — Local Backend | Done | 100% |
 | 2 — Sidebar UI | Done | 100% |
-| 3 — Context-Aware Suggestions | In Progress | ~70% |
+| 3 — Enhance (AI Prompt Rewriting) | Done | 100% |
 | 4 — Local AI (Ollama) | Done | 100% |
 | 5 — Cloud Sync (Supabase) | In Progress | ~85% |
 | 6 — Cloud AI Fallback | Done | ~95% |
@@ -118,9 +118,20 @@ Finish the browser extension MVP by wiring existing UI components to the backend
 
 ### F12. API/MCP Modifier Sources
 - Wire `api` and `mcp` modifier sources in ComposeTab (line 220 TODO)
-- **Complexity**: High | **Status**: Not started
+- **Complexity**: High | **Status**: Done (2026-05-29) — api/mcp modifier sources wired in ComposeTab (callApiSource/callMcpTool + shapeApiBody/shapeMcpArgs), backend /mcp/call route (read-only; writes gated on L1BR3_MCP_ALLOW_WRITE) + mcp_server READ_TOOLS/WRITE_TOOLS, graceful static-text fallback + amber error banners. Landed in 194fd1e; plan was stale. Verified: 124 API + 182 ext tests green (ComposeTab covers all 4 api/mcp success/fail cases), tsc clean, Chrome build clean.
 
 ---
+
+### F13. Enhance Tab (replaces Suggestions)
+- Replace `SuggestionsTab` with a dedicated `EnhanceTab` — a one-shot prompt-rewriting surface (the "Enhance" tab named in `requirements.md`)
+- New backend `POST /api/v1/enhance` SSE endpoint: streams an AI-rewritten prompt; resolution order Ollama (local) → Cloud fallback (when `cloudEnabled`); 503 when no provider
+- Enhancement modes: `summarize`, `concise`, `add_role`, `chain_of_thought`, `output_format`, `best_judgement`, plus `custom` (free-text instruction); unknown mode falls back to `best_judgement`
+- `EnhanceTab.tsx`: prompt input + "From Saved" picker (reuses F6 pattern), mode chips, custom-instruction box, streamed Original/Enhanced diff, provider indicator, and Use-this / Save-as-new / Copy / Retry actions
+- `streamEnhance` client in `lib/api.ts` (shares `_consumeSSE` with `streamGenerate`); `TabType` `'suggestions'` → `'enhance'`; wire Sidebar nav + AdminLayout right column
+- Graceful "AI not available" banner when neither Ollama nor Cloud is reachable
+- **Files**: `api/app/routes/enhance.py`, `api/app/schemas/ai.py`, `api/tests/test_enhance.py`, `browser-ext/components/EnhanceTab.tsx`, `browser-ext/lib/api.ts`, `browser-ext/types/index.ts`, `browser-ext/components/Sidebar.tsx`, `browser-ext/components/AdminLayout.tsx`
+- **Complexity**: Medium | **Depends on**: F6 (From Saved picker), Phase 6 (cloud fallback)
+- **Status**: Done (2026-05-31) — backend `/enhance` SSE route (Ollama→cloud→503) + `EnhanceRequest` schema + `test_enhance.py` (11 tests), `EnhanceTab.tsx` + `streamEnhance` (shares `_consumeSSE` with `streamGenerate`); SuggestionsTab→EnhanceTab cutover complete in Sidebar (Wand2 nav) + AdminLayout right column; old suggestions route/schema/service/tests + SuggestionPanel/SuggestionsTab/mockData removed; requirements.md reconciled (/suggest→/enhance). Verified: 109 API + 183 ext tests green (test_enhance 11, EnhanceTab.test 27), tsc clean, F13 files ruff-clean, Chrome build emits admin.html + sidepanel.html. Committed on `feat/f13-enhance-tab` (5967777). NOTE: earlier "13 tests / ruff unused-imports" note was stale — actual is 11 tests, ruff clean.
 
 ## Dependency Graph
 
