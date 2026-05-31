@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { BarChart3, Minimize2, Settings, Sparkles, TerminalSquare, X } from 'lucide-react'
+import { BarChart3, Minimize2, Settings, Wand2, TerminalSquare, X } from 'lucide-react'
 import { PromptsTab } from './PromptsTab'
 import { ComposeTab } from './ComposeTab'
-import { SuggestionsTab } from './SuggestionsTab'
+import { EnhanceTab } from './EnhanceTab'
 import { SettingsTab } from './SettingsTab'
 import { AnalyticsPanel } from './AnalyticsPanel'
 import { AnimatePresence, motion } from 'framer-motion'
 
-type RightPane = 'suggest' | 'stats'
+type RightPane = 'enhance' | 'stats'
 
 async function closeAdminTab(): Promise<void> {
   try {
@@ -24,7 +24,7 @@ async function closeAdminTab(): Promise<void> {
 
 export function AdminLayout() {
   const [showSettings, setShowSettings] = useState(false)
-  const [rightPane, setRightPane] = useState<RightPane>('suggest')
+  const [rightPane, setRightPane] = useState<RightPane>('enhance')
 
   return (
     <div className="flex flex-col h-screen w-full bg-slate-950 text-slate-200 overflow-hidden font-sans">
@@ -71,7 +71,7 @@ export function AdminLayout() {
           <ComposeTab />
         </div>
 
-        {/* Right Column: tabbed Suggest / Stats (380px fixed) */}
+        {/* Right Column: tabbed Enhance / Stats (380px fixed) */}
         <div className="w-[380px] border-l border-slate-800 flex flex-col bg-slate-950 shrink-0">
           <div
             role="tablist"
@@ -80,15 +80,15 @@ export function AdminLayout() {
           >
             <button
               role="tab"
-              aria-selected={rightPane === 'suggest'}
-              onClick={() => setRightPane('suggest')}
+              aria-selected={rightPane === 'enhance'}
+              onClick={() => setRightPane('enhance')}
               className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                rightPane === 'suggest'
+                rightPane === 'enhance'
                   ? 'border-indigo-500 text-slate-100'
                   : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Sparkles size={14} /> Suggest
+              <Wand2 size={14} /> Enhance
             </button>
             <button
               role="tab"
@@ -104,7 +104,7 @@ export function AdminLayout() {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto" role="tabpanel">
-            {rightPane === 'suggest' ? <SuggestionsTab /> : <AnalyticsPanel />}
+            {rightPane === 'enhance' ? <EnhanceTab /> : <AnalyticsPanel />}
           </div>
         </div>
 

@@ -84,11 +84,13 @@ A high-performance, cross-browser, and cross-platform application to store, mana
 - `{{variable}}` detection with auto-generated form fields
 - Live preview with variable substitution
 
-#### Enhance / AI Suggestions
-- Flexible input: URL, text, code, saved prompts
-- AI-powered suggestion panels (configurable)
-- Requires AI connection (local or cloud)
-- Disabled states with clear setup guidance
+#### Enhance
+- Flexible input: type text or load from saved prompts
+- One-shot AI prompt rewriting with selectable modes (summarize, concise,
+  add role, chain-of-thought, output format, best judgement) plus custom instructions
+- Streamed Original/Enhanced diff with provider indicator (Ollama or cloud)
+- Result actions: use in Compose, save as new prompt, copy, retry
+- Requires AI connection (local or cloud); disabled state with clear setup guidance
 
 ### Post-MVP Features
 - Cloud sync (Supabase)
@@ -116,9 +118,9 @@ GET    /api/v1/categories           # List categories
 POST   /api/v1/prompts/{id}/tags    # Add tags
 ```
 
-### AI & Suggestions
+### AI & Enhance
 ```
-POST   /api/v1/suggest              # Get suggestions for context
+POST   /api/v1/enhance              # Stream an AI-rewritten prompt (SSE)
 POST   /api/v1/generate             # Generate AI response
 POST   /api/v1/process-template     # Render Jinja2 template
 ```
@@ -144,7 +146,7 @@ WS     /ws                          # Real-time connection (local only)
 |---|---|---|---|
 | 1 | Local Backend Foundation | Week 1-2 | ✅ Complete |
 | 2 | Sidebar UI | Week 3-4 | 🔵 In Progress |
-| 3 | Context-Aware Suggestions | Week 5-6 | ⬜ Upcoming |
+| 3 | Enhance (AI Prompt Rewriting) | Week 5-6 | ⬜ Upcoming |
 | 4 | Local AI Integration | Week 7-8 | ✅ Complete |
 | 5 | Optional Cloud Sync | Week 9-10 | 🔵 In Progress |
 | 6 | Free Cloud AI Fallback | Week 11-12 | 🔵 In Progress |
@@ -161,10 +163,10 @@ WS     /ws                          # Real-time connection (local only)
 - Rich text editor with Tiptap, modifiers, variables
 - Content script for context detection
 
-### Phase 3: Context-Aware Suggestions
-- Backend /suggest endpoint (rule-based)
-- Sidebar displays suggestions in real-time
-- Configurable suggestion panels
+### Phase 3: Enhance (AI Prompt Rewriting)
+- Backend /enhance endpoint (SSE stream; Ollama → cloud fallback)
+- Sidebar Enhance tab with selectable rewrite modes + custom instructions
+- Streamed Original/Enhanced diff with result actions
 
 ### Phase 4: Local AI Integration
 - Auto-detect and integrate Ollama
@@ -214,7 +216,7 @@ WS     /ws                          # Real-time connection (local only)
 |---|---|
 | Sidebar open time | < 200ms |
 | Prompt copy latency | < 50ms |
-| Suggestion display | < 150ms |
+| Enhance first-chunk latency | < 150ms |
 | Backend idle memory | < 150 MB |
 
 ---

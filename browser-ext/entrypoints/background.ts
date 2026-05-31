@@ -43,10 +43,8 @@ export default defineBackground(() => {
     void _refreshBackendHealth()
   })
 
-  // Notify sidebar when the active tab changes so it can refresh suggestions,
-  // and trigger a background sync if sync is enabled
+  // Trigger a background sync when the active tab changes (if sync is enabled)
   browser.tabs.onActivated.addListener(() => {
-    browser.runtime.sendMessage({ type: 'TAB_CHANGED' }).catch(() => {})
     _maybeSyncBackground()
   })
 

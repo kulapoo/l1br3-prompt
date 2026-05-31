@@ -1,4 +1,4 @@
-import type { AiStatus, GenerateRequest, ProcessTemplateResponse, Prompt, PromptCreate, PromptStats, PromptUpdate, Suggestion, SuggestContext, Tag } from '../types'
+import type { AiStatus, GenerateRequest, ProcessTemplateResponse, Prompt, PromptCreate, PromptStats, PromptUpdate, Tag } from '../types'
 
 /** Thrown when the cloud provider returns a quota_exceeded error frame. */
 export class QuotaExceededError extends Error {
@@ -42,30 +42,58 @@ export async function pingBackend(baseUrl: string): Promise<boolean> {
   }
 }
 
-// ── Suggestions ───────────────────────────────────────────────────────────────
+// ── SSE reader (shared by streamGenerate and streamEnhance) ───────────────────
 
-export async function fetchSuggestions(
-  baseUrl: string,
-  ctx: SuggestContext,
-  opts?: { deviceId?: string | null; cloudEnabled?: boolean },
-): Promise<Suggestion[]> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (opts?.deviceId) headers['X-Device-Id'] = opts.deviceId
-  if (opts?.cloudEnabled) headers['X-Cloud-Enabled'] = 'true'
+async function _consumeSSE(
+  body: ReadableStream<Uint8Array>,
+  onChunk: (chunk: string) => void,
+  opts?: {
+    onMeta?: (meta: { provider: 'ollama' | 'cloud' }) => void
+  },
+): Promise<void> {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
 
-  const res = await fetch(`${baseUrl}/api/v1/suggest`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(ctx),
-  })
-  if (!res.ok) {
-    throw new Error(`Suggest request failed: ${res.statusText}`)
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buf += decoder.decode(value, { stream: true })
+    const lines = buf.split('\n')
+    // Keep the last potentially-incomplete line in the buffer
+    buf = lines.pop() ?? ''
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const raw = line.slice(6).trim()
+      if (!raw) continue
+      try {
+        const data = JSON.parse(raw) as {
+          chunk?: string
+          done?: boolean
+          error?: string
+          meta?: { provider?: string }
+          resetAt?: string
+        }
+        if (data.error) {
+          if (data.error === 'quota_exceeded') {
+            throw new QuotaExceededError(data.resetAt ?? null)
+          }
+          throw new Error(data.error)
+        }
+        if (data.done) return
+        if (data.chunk) onChunk(data.chunk)
+        if (data.meta?.provider && opts?.onMeta) {
+          const provider = data.meta.provider === 'ollama' ? 'ollama' : 'cloud'
+          opts.onMeta({ provider })
+        }
+      } catch (err) {
+        if (err instanceof SyntaxError) continue // malformed frame — skip
+        throw err
+      }
+    }
   }
-  const json: ApiResponse<Suggestion[]> = await res.json()
-  if (!json.success) {
-    throw new Error(json.error ?? 'Unknown error from suggest endpoint')
-  }
-  return json.data ?? []
 }
 
 // ── AI status ─────────────────────────────────────────────────────────────────
@@ -130,49 +158,43 @@ export async function streamGenerate(
   }
   if (!res.body) throw new Error('No response body from generate endpoint')
 
-  const reader = res.body.getReader()
-  const decoder = new TextDecoder()
-  let buf = ''
+  await _consumeSSE(res.body, onChunk, { onMeta: opts?.onMeta })
+}
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
+// ── Streaming enhance ─────────────────────────────────────────────────────────
 
-    buf += decoder.decode(value, { stream: true })
-    const lines = buf.split('\n')
-    // Keep the last potentially-incomplete line in the buffer
-    buf = lines.pop() ?? ''
+export async function streamEnhance(
+  baseUrl: string,
+  body: { prompt: string; mode: string; instruction?: string },
+  onChunk: (chunk: string) => void,
+  signal?: AbortSignal,
+  opts?: {
+    deviceId?: string | null
+    cloudEnabled?: boolean
+    onMeta?: (meta: { provider: 'ollama' | 'cloud' }) => void
+  },
+): Promise<void> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (opts?.deviceId) headers['X-Device-Id'] = opts.deviceId
 
-    for (const line of lines) {
-      if (!line.startsWith('data: ')) continue
-      const raw = line.slice(6).trim()
-      if (!raw) continue
-      try {
-        const data = JSON.parse(raw) as {
-          chunk?: string
-          done?: boolean
-          error?: string
-          meta?: { provider?: string }
-          resetAt?: string
-        }
-        if (data.error) {
-          if (data.error === 'quota_exceeded') {
-            throw new QuotaExceededError(data.resetAt ?? null)
-          }
-          throw new Error(data.error)
-        }
-        if (data.done) return
-        if (data.chunk) onChunk(data.chunk)
-        if (data.meta?.provider && opts?.onMeta) {
-          const provider = data.meta.provider === 'ollama' ? 'ollama' : 'cloud'
-          opts.onMeta({ provider })
-        }
-      } catch (err) {
-        if (err instanceof SyntaxError) continue // malformed frame — skip
-        throw err
-      }
-    }
+  const requestBody = {
+    ...body,
+    cloudEnabled: opts?.cloudEnabled ?? false,
   }
+
+  const res = await fetch(`${baseUrl}/api/v1/enhance`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(requestBody),
+    signal,
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText)
+    throw new Error(`Enhance failed (${res.status}): ${text}`)
+  }
+  if (!res.body) throw new Error('No response body from enhance endpoint')
+
+  await _consumeSSE(res.body, onChunk, { onMeta: opts?.onMeta })
 }
 
 // ── Prompts ───────────────────────────────────────────────────────────────────

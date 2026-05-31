@@ -1,4 +1,4 @@
-export type TabType = 'compose' | 'prompts' | 'suggestions' | 'settings';
+export type TabType = 'compose' | 'prompts' | 'enhance' | 'settings';
 
 export interface Tag {
   id: string;
@@ -28,27 +28,6 @@ export interface PromptCreate {
 }
 
 export type PromptUpdate = Partial<PromptCreate>;
-
-export interface Suggestion {
-  id: string;
-  promptId: string;
-  title: string;
-  description: string;
-  actionText: string;
-  originalText?: string;
-  suggestedText?: string;
-  score: number;
-  rule: string;
-}
-
-export interface SuggestContext {
-  url?: string;
-  selectedText?: string;
-  pageTitle?: string;
-  pageContent?: string;
-  inputText?: string;
-  useAi?: boolean;
-}
 
 export interface GenerateRequest {
   prompt: string;

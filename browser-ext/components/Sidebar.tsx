@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Sparkles,
+  Wand2,
   PenLine,
   Settings,
   TerminalSquare,
@@ -8,7 +8,7 @@ import {
 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PromptsTab } from './PromptsTab';
-import { SuggestionsTab } from './SuggestionsTab';
+import { EnhanceTab } from './EnhanceTab';
 import { ComposeTab } from './ComposeTab';
 import { SettingsTab } from './SettingsTab';
 import { StatusBar } from './StatusBar';
@@ -39,9 +39,9 @@ export function Sidebar() {
     label: 'Prompts'
   },
   {
-    id: 'suggestions',
-    icon: Sparkles,
-    label: 'Suggest'
+    id: 'enhance',
+    icon: Wand2,
+    label: 'Enhance'
   },
   {
     id: 'settings',
@@ -139,7 +139,7 @@ export function Sidebar() {
 
             {activeTab === 'compose' && <ComposeTab />}
             {activeTab === 'prompts' && <PromptsTab />}
-            {activeTab === 'suggestions' && <SuggestionsTab />}
+            {activeTab === 'enhance' && <EnhanceTab />}
             {activeTab === 'settings' && <SettingsTab />}
           </motion.div>
         </AnimatePresence>
