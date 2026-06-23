@@ -10,10 +10,10 @@ A local-first prompt management tool — store, organize, compose, and get AI-po
 |-------|-------------|--------|
 | 1 | Local Backend (FastAPI + SQLite) | ✅ Complete |
 | 2 | Browser Extension Sidebar (MVP UI) | 🔵 In Progress |
-| 3 | Context-Aware Suggestions | ⬜ Upcoming |
-| 4 | Local AI Integration (Ollama) | ⬜ Upcoming |
-| 5 | Optional Cloud Sync (Supabase) | ⬜ Upcoming |
-| 6 | Free Cloud AI Fallback | ⬜ Upcoming |
+| 3 | Transform (AI Prompt Rewriting) | ✅ Complete |
+| 4 | Local AI Integration (Ollama) | ✅ Complete |
+| 5 | Optional Cloud Sync (Supabase) | 🔵 In Progress |
+| 6 | Free Cloud AI Fallback | ✅ Complete |
 
 ## Tech Stack
 
@@ -80,7 +80,7 @@ l1br3-prompt/
 │   ├── migrations/         # Alembic migrations
 │   └── tests/              # pytest suite
 ├── browser-ext/            # WXT/React extension
-│   ├── components/         # Tab components (Compose, Prompts, Suggestions, Settings)
+│   ├── components/         # Tab components (Compose, Prompts, Settings) + TransformPanel
 │   ├── contexts/           # AppConfig React context
 │   ├── entrypoints/        # WXT entry points (sidepanel)
 │   ├── hooks/              # Custom React hooks

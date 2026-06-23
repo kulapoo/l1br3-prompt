@@ -68,7 +68,7 @@ A high-performance, cross-browser, and cross-platform application to store, mana
 #### Sidebar UI
 - Opens via toolbar button or keyboard shortcut (Ctrl+Shift+Y)
 - Resizable, stays open while user browses
-- Tabs: Compose, Prompts, Enhance, Settings
+- Tabs: Compose, Prompts, Settings
 - Admin/Dashboard mode for full-width view
 
 #### Prompt Management
@@ -84,11 +84,16 @@ A high-performance, cross-browser, and cross-platform application to store, mana
 - `{{variable}}` detection with auto-generated form fields
 - Live preview with variable substitution
 
-#### Enhance
-- Flexible input: type text or load from saved prompts
+#### Transform (in Compose)
+- Built into the Compose tab as `TransformPanel`, below the editor
 - One-shot AI prompt rewriting with selectable modes (summarize, concise,
   add role, chain-of-thought, output format, best judgement) plus custom instructions
-- Streamed Original/Enhanced diff with provider indicator (Ollama or cloud)
+- Modes can be **combined** (multi-select → single combined meta-prompt, one LLM stream)
+- **Transform the editor selection** (replaces only selected text); whole-text transform
+  shows a confirmation warning that `{{variables}}`, modifiers, and formatting are removed
+- User can **save a custom instruction as a reusable mode** (persisted to DB, syncable)
+- Placeholders `{{...}}` are kept in the LLM input for context; the meta-prompt directs
+  the AI to remove them from the output
 - Result actions: use in Compose, save as new prompt, copy, retry
 - Requires AI connection (local or cloud); disabled state with clear setup guidance
 
@@ -118,9 +123,12 @@ GET    /api/v1/categories           # List categories
 POST   /api/v1/prompts/{id}/tags    # Add tags
 ```
 
-### AI & Enhance
+### AI & Transform
 ```
-POST   /api/v1/enhance              # Stream an AI-rewritten prompt (SSE)
+POST   /api/v1/transform             # Stream an AI-rewritten prompt (SSE)
+GET    /api/v1/transform-modes       # List built-in + custom transform modes
+POST   /api/v1/transform-modes       # Create a custom transform mode
+DELETE /api/v1/transform-modes/{id}  # Delete a custom transform mode
 POST   /api/v1/generate             # Generate AI response
 POST   /api/v1/process-template     # Render Jinja2 template
 ```
@@ -146,7 +154,7 @@ WS     /ws                          # Real-time connection (local only)
 |---|---|---|---|
 | 1 | Local Backend Foundation | Week 1-2 | ✅ Complete |
 | 2 | Sidebar UI | Week 3-4 | 🔵 In Progress |
-| 3 | Enhance (AI Prompt Rewriting) | Week 5-6 | ⬜ Upcoming |
+| 3 | Transform (AI Prompt Rewriting) | Week 5-6 | ✅ Complete |
 | 4 | Local AI Integration | Week 7-8 | ✅ Complete |
 | 5 | Optional Cloud Sync | Week 9-10 | 🔵 In Progress |
 | 6 | Free Cloud AI Fallback | Week 11-12 | 🔵 In Progress |
@@ -163,10 +171,11 @@ WS     /ws                          # Real-time connection (local only)
 - Rich text editor with Tiptap, modifiers, variables
 - Content script for context detection
 
-### Phase 3: Enhance (AI Prompt Rewriting)
-- Backend /enhance endpoint (SSE stream; Ollama → cloud fallback)
-- Sidebar Enhance tab with selectable rewrite modes + custom instructions
-- Streamed Original/Enhanced diff with result actions
+### Phase 3: Transform (AI Prompt Rewriting)
+- Backend `/transform` endpoint (SSE stream; Ollama → cloud fallback) + `/transform-modes` CRUD
+- In-Compose `TransformPanel`: selectable rewrite modes + custom instructions, applied to
+  editor selection or whole text (with confirmation)
+- Combined modes (multi-select → single meta-prompt); saved custom modes persisted to DB
 
 ### Phase 4: Local AI Integration
 - Auto-detect and integrate Ollama
@@ -216,7 +225,7 @@ WS     /ws                          # Real-time connection (local only)
 |---|---|
 | Sidebar open time | < 200ms |
 | Prompt copy latency | < 50ms |
-| Enhance first-chunk latency | < 150ms |
+| Transform first-chunk latency | < 150ms |
 | Backend idle memory | < 150 MB |
 
 ---
@@ -226,11 +235,11 @@ WS     /ws                          # Real-time connection (local only)
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Browser Extension – Sidebar (React)                    │
-│  ┌───────────┐ ┌───────────┐ ┌──────┐ ┌──────────┐     │
-│  │ Compose   │ │ Prompts   │ │Enhance│ │ Settings │     │
-│  └─────┬─────┘ └─────┬─────┘ └──┬───┘ └────┬─────┘     │
-│        └──────────────┼─────────┘           │           │
-│                       │ HTTP / WebSocket    │           │
+│  ┌───────────┐ ┌───────────┐ ┌──────────┐              │
+│  │ Compose   │ │ Prompts   │ │ Settings │              │
+│  └─────┬─────┘ └─────┬─────┘ └────┬─────┘              │
+│        └──────────────┼───────────┘                      │
+│                       │ HTTP / WebSocket                 │
 └───────────────────────┼─────────────────────┘───────────┘
                         ▼
 ┌─────────────────────────────────────────────────────────┐

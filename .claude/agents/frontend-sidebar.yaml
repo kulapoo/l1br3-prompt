@@ -12,7 +12,7 @@ instructions: |
   - OpenAPI-generated API clients
 
   ## Key Responsibilities
-  - Build and refine sidebar UI components (Compose, Prompts, Enhance, Settings tabs)
+  - Build and refine sidebar UI components (Compose, Prompts, Settings tabs + TransformPanel)
   - Manage AppConfig context and view state transitions
   - Handle keyboard shortcuts and content script communication
   - Optimize sidebar rendering performance (< 200ms open time)

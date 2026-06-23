@@ -8,9 +8,6 @@ vi.mock('./PromptsTab', () => ({
 vi.mock('./ComposeTab', () => ({
   ComposeTab: () => React.createElement('div', { 'data-testid': 'compose-tab' }, 'Compose'),
 }))
-vi.mock('./EnhanceTab', () => ({
-  EnhanceTab: () => React.createElement('div', { 'data-testid': 'enhance-tab' }, 'Enhance'),
-}))
 vi.mock('./SettingsTab', () => ({
   SettingsTab: () => React.createElement('div', { 'data-testid': 'settings-tab' }, 'Settings'),
 }))
@@ -43,26 +40,16 @@ beforeEach(() => {
 })
 
 describe('AdminLayout', () => {
-  it('renders the 3-column layout with Enhance selected by default', () => {
+  it('renders the 3-column layout with Analytics shown by default', () => {
     render(<AdminLayout />)
     expect(screen.getByTestId('prompts-tab')).toBeTruthy()
     expect(screen.getByTestId('compose-tab')).toBeTruthy()
-    expect(screen.getByTestId('enhance-tab')).toBeTruthy()
-    expect(screen.queryByTestId('analytics-panel')).toBeNull()
-  })
-
-  it('switches right column to Analytics when Stats tab is clicked', () => {
-    render(<AdminLayout />)
-    fireEvent.click(screen.getByRole('tab', { name: /stats/i }))
     expect(screen.getByTestId('analytics-panel')).toBeTruthy()
-    expect(screen.queryByTestId('enhance-tab')).toBeNull()
   })
 
-  it('switches back to Enhance when Enhance tab is clicked', () => {
+  it('does not render an Enhance pane', () => {
     render(<AdminLayout />)
-    fireEvent.click(screen.getByRole('tab', { name: /stats/i }))
-    fireEvent.click(screen.getByRole('tab', { name: /enhance/i }))
-    expect(screen.getByTestId('enhance-tab')).toBeTruthy()
+    expect(screen.queryByTestId('enhance-tab')).toBeNull()
   })
 
   it('closes the current tab when Sidebar Mode is clicked', async () => {

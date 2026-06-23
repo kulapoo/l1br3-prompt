@@ -55,7 +55,8 @@ Key architectural notes and decision points from l1br3-prompt-Specification.md.
 | `GET /api/v1/prompts/{id}` | Get single |
 | `PUT /api/v1/prompts/{id}` | Update |
 | `DELETE /api/v1/prompts/{id}` | Delete |
-| `POST /api/v1/suggest` | Get AI suggestions |
+| `POST /api/v1/transform` | Stream an AI-rewritten prompt (SSE) |
+| `GET /api/v1/transform-modes` | List built-in + custom transform modes |
 | `POST /api/v1/generate` | Generate AI response |
 | `WS /ws` | Real-time updates |
 
@@ -63,7 +64,7 @@ Key architectural notes and decision points from l1br3-prompt-Specification.md.
 
 - Sidebar open: < 200ms
 - Prompt copy: < 50ms  
-- Suggestion display: < 150ms
+- Transform first-chunk: < 150ms
 - Idle memory: < 150 MB
 
 ## Security Checklist

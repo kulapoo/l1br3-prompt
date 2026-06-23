@@ -7,18 +7,18 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes.ai import router as ai_router
 from app.routes.categories import router as categories_router
-from app.routes.enhance import router as enhance_router
 from app.routes.generate import router as generate_router
 from app.routes.health import router as health_router
 from app.routes.mcp import router as mcp_router
 from app.routes.prompts import router as prompts_router
+from app.routes.transform import router as transform_router
 
 
 def _run_migrations() -> None:
     if os.environ.get("L1BR3_TESTING") == "1":
         return
-    import alembic.config
     import alembic.command
+    import alembic.config
     cfg = alembic.config.Config("alembic.ini")
     alembic.command.upgrade(cfg, "head")
 
@@ -61,7 +61,7 @@ app.include_router(prompts_router)
 app.include_router(categories_router)
 app.include_router(ai_router)
 app.include_router(generate_router)
-app.include_router(enhance_router)
+app.include_router(transform_router)
 app.include_router(mcp_router)
 
 

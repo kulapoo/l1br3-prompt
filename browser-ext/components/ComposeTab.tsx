@@ -30,6 +30,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppConfig } from '../contexts/AppConfig';
+import { TransformPanel } from './TransformPanel';
 
 export function ComposeTab() {
   const { config, updateConfig, setActiveTab, editingPrompt, setEditingPrompt } = useAppConfig();
@@ -641,6 +642,9 @@ export function ComposeTab() {
             <EditorContent editor={editor} />
           </div>
         </div>
+
+        {/* Transform */}
+        <TransformPanel editor={editor} />
 
         {/* Dynamic Variables */}
         {detectedVars.length > 0 &&

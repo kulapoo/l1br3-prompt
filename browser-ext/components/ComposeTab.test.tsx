@@ -60,6 +60,9 @@ vi.mock('../hooks/usePromptMutations', () => ({
   useUpdatePrompt: vi.fn(),
 }))
 vi.mock('../hooks/useCategories', () => ({ useCategories: vi.fn() }))
+vi.mock('./TransformPanel', () => ({
+  TransformPanel: () => React.createElement('div', { 'data-testid': 'transform-panel' }),
+}))
 
 import { useAppConfig } from '../contexts/AppConfig'
 import * as mutations from '../hooks/usePromptMutations'

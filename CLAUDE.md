@@ -21,9 +21,9 @@ l1br3-prompt/
 │   │   ├── repositories/   # Data access layer (repository pattern)
 │   │   └── services/       # Business logic
 │   ├── migrations/         # Alembic migrations
-│   └── tests/              # pytest suite (73 tests, all passing)
+│   └── tests/              # pytest suite (121 tests, all passing)
 ├── browser-ext/            # WXT/React browser extension (Phase 2 🔵 in progress)
-│   ├── components/         # Tab components (Compose, Prompts, Suggestions, Settings, Sidebar)
+│   ├── components/         # Tab components (Compose, Prompts, Settings, Sidebar) + TransformPanel
 │   ├── contexts/           # AppConfig React context (global state)
 │   ├── entrypoints/        # WXT entry points (sidepanel, background, content)
 │   ├── hooks/              # Custom React hooks
@@ -66,7 +66,7 @@ Python 3.12+ / FastAPI / SQLite + SQLAlchemy 2 / Alembic / Pydantic v2.
 
 All responses use the `ApiResponse[T]` envelope: `{ success, data, error, metadata }`.
 
-Endpoints: prompts CRUD, `/suggest` (rule-based + optional Ollama), `/generate` (SSE stream), `/process-template`, `/ai/status`, `/health`. Binds to `127.0.0.1` only (never exposed to internet).
+Endpoints: prompts CRUD, `/generate` (SSE stream), `/process-template`, `/transform` (SSE stream) + `/transform-modes` CRUD, `/ai/status`, `/health`. Binds to `127.0.0.1` only (never exposed to internet).
 
 ### Browser Extension (`browser-ext/`)
 
@@ -74,7 +74,7 @@ WXT + React 19 + TypeScript + Tailwind CSS 4. Chrome Side Panel API + Firefox si
 
 **Global state**: `AppConfigProvider` (React Context, `contexts/AppConfig.tsx`) — backend connection, AI settings, sync state, quick-actions. Persisted to `browser.storage.local`.
 
-**Tab components**: `ComposeTab` (Tiptap editor + variables + modifiers), `PromptsTab` (prompt library), `SuggestionsTab` (AI suggestions), `SettingsTab` (backend/AI/sync config).
+**Tab components**: `ComposeTab` (Tiptap editor + variables + modifiers + `TransformPanel` for AI rewriting), `PromptsTab` (prompt library), `SettingsTab` (backend/AI/sync config). `TransformPanel` applies combined transformation modes to the editor selection (or whole text with confirmation).
 
 **Entry points**: `sidepanel` (main UI), `background` (opens side panel, broadcasts TAB_CHANGED), `content` (context detection + text injection into ChatGPT/Claude/Gemini).
 
@@ -84,7 +84,7 @@ WXT + React 19 + TypeScript + Tailwind CSS 4. Chrome Side Panel API + Firefox si
 |-------|-------------|--------|
 | 1 | Local Backend (FastAPI + SQLite) | ✅ Complete |
 | 2 | Browser Extension Sidebar (MVP UI) | 🔵 In Progress |
-| 3 | Context-Aware Suggestions | ⬜ Upcoming |
+| 3 | Transform (AI Prompt Rewriting) | ✅ Complete |
 | 4 | Local AI Integration (Ollama) | ✅ Complete |
 | 5 | Optional Cloud Sync (Supabase) | 🔵 In Progress |
 | 6 | Free Cloud AI Fallback | ✅ Complete |

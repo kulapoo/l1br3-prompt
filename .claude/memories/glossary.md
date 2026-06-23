@@ -13,7 +13,7 @@ Common terms and acronyms used in l1br3-prompt.
 | **E2E** | End-to-End | Encryption (optional cloud sync) |
 | **RLS** | Row-Level Security | Supabase PostgreSQL feature |
 | **LLM** | Large Language Model | Ollama, Groq, Gemini |
-| **AI** | Artificial Intelligence | Suggestion/generation engines |
+| **AI** | Artificial Intelligence | Transform/generation engines |
 
 ## Product Terms
 
@@ -35,11 +35,11 @@ Common terms and acronyms used in l1br3-prompt.
 - Inline edit/delete/favorite
 - Copy to clipboard or inject into page
 
-**Enhance / Suggestions Tab**
-- AI-powered suggestions for improvement
+**Transform (in Compose)**
+- AI-powered prompt rewriting built into the Compose tab (`TransformPanel`)
 - Requires Ollama (local) or cloud AI fallback
-- Shows multiple suggestion panels
-- User can accept, edit, or ignore
+- Selectable modes (summarize, concise, etc) + custom instructions; modes can be combined
+- User can save custom modes; transforms editor selection or whole text
 
 **Settings Tab**
 - Backend/AI configuration
@@ -56,7 +56,7 @@ Common terms and acronyms used in l1br3-prompt.
 
 **Admin Mode**
 - Full-width 3-column layout for testing/development
-- Prompts | Compose | Suggestions columns
+- Prompts | Compose | Stats columns
 - Slide-over Settings panel
 
 **View Mode**
@@ -90,7 +90,7 @@ Common terms and acronyms used in l1br3-prompt.
 **Ollama**
 - Local LLM runner (localhost:11434)
 - User installs separately
-- Enables free local AI suggestions
+- Enables free local AI
 - Models: Mistral, Llama2, Neural-Chat, etc
 
 ## Sync Concepts
@@ -118,7 +118,7 @@ Common terms and acronyms used in l1br3-prompt.
 - Replaces external state library
 
 **Tab Components**
-- ComposeTab, PromptsTab, SuggestionsTab, SettingsTab
+- ComposeTab (incl. TransformPanel), PromptsTab, SettingsTab
 - Shared between sidebar and admin modes
 - Use AppConfig context for state
 

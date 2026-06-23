@@ -1,4 +1,13 @@
-export type TabType = 'compose' | 'prompts' | 'enhance' | 'settings';
+export type TabType = 'compose' | 'prompts' | 'settings';
+
+export interface TransformMode {
+  id: string;
+  name: string;
+  instruction: string;
+  isBuiltin: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export interface Tag {
   id: string;

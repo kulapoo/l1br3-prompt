@@ -39,16 +39,6 @@ class GenerateRequest(BaseModel):
     cloud_enabled: bool = False
 
 
-class EnhanceRequest(BaseModel):
-    model_config = _camel
-
-    prompt: str
-    mode: str = "best_judgement"
-    instruction: str | None = None
-    model: str | None = None
-    cloud_enabled: bool = False
-
-
 class ProcessTemplateRequest(BaseModel):
     model_config = _camel
 

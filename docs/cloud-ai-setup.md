@@ -2,7 +2,7 @@
 
 ## What It Is (and Isn't)
 
-The Cloud AI Fallback lets you use l1br3-prompt's AI features — Suggestions, Enhance, and Compose modifiers — even when [Ollama](https://ollama.com) isn't installed or running on your machine.
+The Cloud AI Fallback lets you use l1br3-prompt's AI features — Transform and Compose modifiers — even when [Ollama](https://ollama.com) isn't installed or running on your machine.
 
 When the fallback is enabled and Ollama is unavailable, the extension sends your prompt through a Cloudflare Worker that proxies to Groq (`llama3-8b-8192`) with Gemini (`gemini-1.5-flash`) as a secondary option. The active provider is always shown in the extension's status bar.
 

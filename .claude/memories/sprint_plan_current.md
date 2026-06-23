@@ -1,6 +1,6 @@
 ---
 name: Current Sprint Plan
-description: Structured sprint plan for remaining work across Phases 2, 3, and 5 — prompt CRUD wiring, suggestions polish, sync improvements
+description: Structured sprint plan for remaining work across Phases 2, 3, and 5 — prompt CRUD wiring, transform polish, sync improvements
 type: project
 originSessionId: b9b63de3-64bf-4bcc-be05-05b565b0a2a8
 ---
@@ -14,14 +14,14 @@ Created: 2026-04-12
 |-------|--------|------------|
 | 1 — Local Backend | Done | 100% |
 | 2 — Sidebar UI | Done | 100% |
-| 3 — Enhance (AI Prompt Rewriting) | Done | 100% |
+| 3 — Transform (AI Prompt Rewriting; was Enhance) | Done | 100% |
 | 4 — Local AI (Ollama) | Done | 100% |
 | 5 — Cloud Sync (Supabase) | In Progress | ~85% |
 | 6 — Cloud AI Fallback | Done | ~95% |
 
 ## Goal
 
-Finish the browser extension MVP by wiring existing UI components to the backend, then polish suggestion and sync experiences. UI scaffolding and backend endpoints are both solid — what's missing is the glue between them.
+Finish the browser extension MVP by wiring existing UI components to the backend, then polish transform and sync experiences. UI scaffolding and backend endpoints are both solid — what's missing is the glue between them.
 
 ---
 
@@ -131,7 +131,20 @@ Finish the browser extension MVP by wiring existing UI components to the backend
 - Graceful "AI not available" banner when neither Ollama nor Cloud is reachable
 - **Files**: `api/app/routes/enhance.py`, `api/app/schemas/ai.py`, `api/tests/test_enhance.py`, `browser-ext/components/EnhanceTab.tsx`, `browser-ext/lib/api.ts`, `browser-ext/types/index.ts`, `browser-ext/components/Sidebar.tsx`, `browser-ext/components/AdminLayout.tsx`
 - **Complexity**: Medium | **Depends on**: F6 (From Saved picker), Phase 6 (cloud fallback)
-- **Status**: Done (2026-05-31) — backend `/enhance` SSE route (Ollama→cloud→503) + `EnhanceRequest` schema + `test_enhance.py` (11 tests), `EnhanceTab.tsx` + `streamEnhance` (shares `_consumeSSE` with `streamGenerate`); SuggestionsTab→EnhanceTab cutover complete in Sidebar (Wand2 nav) + AdminLayout right column; old suggestions route/schema/service/tests + SuggestionPanel/SuggestionsTab/mockData removed; requirements.md reconciled (/suggest→/enhance). Verified: 109 API + 183 ext tests green (test_enhance 11, EnhanceTab.test 27), tsc clean, F13 files ruff-clean, Chrome build emits admin.html + sidepanel.html. Committed on `feat/f13-enhance-tab` (5967777). NOTE: earlier "13 tests / ruff unused-imports" note was stale — actual is 11 tests, ruff clean.
+- **Status**: Done (2026-05-31) — backend `/enhance` SSE route (Ollama→cloud→503) + `EnhanceRequest` schema + `test_enhance.py` (11 tests), `EnhanceTab.tsx` + `streamEnhance` (shares `_consumeSSE` with `streamGenerate`); SuggestionsTab→EnhanceTab cutover complete in Sidebar (Wand2 nav) + AdminLayout right column; old suggestions route/schema/service/tests + SuggestionPanel/SuggestionsTab/mockData removed; requirements.md reconciled (/suggest→/enhance). Verified: 109 API + 183 ext tests green (test_enhance 11, EnhanceTab.test 27), tsc clean, F13 files ruff-clean, Chrome build emits admin.html + sidepanel.html. Committed on `feat/f13-enhance-tab` (5967777). NOTE: earlier "13 tests / ruff unused-imports" note was stale — actual is 11 tests, ruff clean. **⚠️ SUPERSEDED by F14 (2026-06-23)** — Enhance tab removed; migrated into Compose as Transform. See F14.
+
+### F14. Transform refactor — migrate Enhance into Compose
+- **Remove** the standalone "Enhance" tab (Sidebar + AdminLayout); rename Enhance→Transform across backend, frontend, and schema
+- **Migrate** enhancement into the Compose section below the editor as `TransformPanel`
+- Default transformations (Summarize, Make Concise, Add Role, Chain of Thought, Specify Output Format, Best Judgement) plus free-text **Custom**; **each transformation can be combined** (multi-select → single combined meta-prompt)
+- User can **save a Custom instruction as a reusable Transformation mode** (persisted to new `transform_modes` DB table; syncable via Supabase Phase 5); built-ins are non-deletable
+- **Transform a text selection** in the editor (critical): replaces only the selected text; if no selection, transforms the whole editor with a **confirmation dialog** warning that `{{variables}}`, modifiers, and formatting will be removed
+- Placeholders `{{...}}` are left in the LLM input (for context) but the meta-prompt instructs the AI to **remove them from the output**
+- Transform button **disabled when no mode is selected**; flips to Cancel while streaming
+- Backend: `POST /api/v1/transform` (SSE, replaces `/enhance`) accepts `modes: list[str]` and combines them; CRUD `GET/POST/DELETE /api/v1/transform-modes`
+- **Files**: `api/migrations/versions/003_transform_modes.py`, `api/app/models/transform_mode.py`, `api/app/repositories/transform_mode_repo.py`, `api/app/schemas/transform.py`, `api/app/routes/transform.py` (replaces `enhance.py`), `api/tests/test_transform.py`; `browser-ext/components/TransformPanel.tsx`, `TransformConfirmDialog.tsx`, `hooks/useTransformModes.ts`, `lib/api.ts` (`streamTransform` + CRUD), `types/index.ts` (`TransformMode`, `TabType` drops `'enhance'`), `components/ComposeTab.tsx`, `Sidebar.tsx`, `AdminLayout.tsx`, `AdminLayout.test.tsx`; deleted `EnhanceTab.tsx`, `EnhanceTab.test.tsx`
+- **Complexity**: High | **Depends on**: F13 (Enhance), Phase 6 (cloud fallback)
+- **Status**: Done (2026-06-23) — full Enhance→Transform rename across BE/FE/schema. `POST /api/v1/transform` SSE + `/transform-modes` CRUD + migration 003 (`transform_modes` table) + `TransformMode` ORM/repo. Combined-modes meta-prompt (single LLM stream); `resolve_instructions` merges builtin slug ids + custom UUID ids + "custom" pseudo-id. In-Compose `TransformPanel` below editor: multi-select chips, saved custom modes, selection-aware transform, whole-text confirmation dialog. Placeholder-removal directive in meta-prompt (input preserved for context). Backend `test_transform.py` (23 tests); `TransformPanel.test.tsx` (13 tests); `AdminLayout.test.tsx` updated (Stats-only right column). Verified: 121 API + 168 ext tests green, tsc clean, ruff introduces 0 new errors.
 
 ## Dependency Graph
 
@@ -142,6 +155,7 @@ F1 (Fetch prompts) <-- F6 (From Saved)
 F3 (Save)          <-- F5 (Edit flow)
 F7 (Categories)     parallel with F2-F4
 F8 (Offline cache)  parallel with F2-F4
+F13 (Enhance)       <-- F14 (Transform refactor)
 Sprint 3 features are independent of each other
 ```
 

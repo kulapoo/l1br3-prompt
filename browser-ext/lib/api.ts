@@ -1,4 +1,4 @@
-import type { AiStatus, GenerateRequest, ProcessTemplateResponse, Prompt, PromptCreate, PromptStats, PromptUpdate, Tag } from '../types'
+import type { AiStatus, GenerateRequest, ProcessTemplateResponse, Prompt, PromptCreate, PromptStats, PromptUpdate, Tag, TransformMode } from '../types'
 
 /** Thrown when the cloud provider returns a quota_exceeded error frame. */
 export class QuotaExceededError extends Error {
@@ -42,7 +42,7 @@ export async function pingBackend(baseUrl: string): Promise<boolean> {
   }
 }
 
-// ── SSE reader (shared by streamGenerate and streamEnhance) ───────────────────
+// ── SSE reader (shared by streamGenerate and streamTransform) ────────────────
 
 async function _consumeSSE(
   body: ReadableStream<Uint8Array>,
@@ -161,11 +161,19 @@ export async function streamGenerate(
   await _consumeSSE(res.body, onChunk, { onMeta: opts?.onMeta })
 }
 
-// ── Streaming enhance ─────────────────────────────────────────────────────────
+// ── Streaming transform ───────────────────────────────────────────────────────
 
-export async function streamEnhance(
+/**
+ * Stream an AI-transformed version of the prompt via SSE.
+ *
+ * `modes` is a list of transform-mode ids (built-in slugs and/or custom ids);
+ * they are combined into a single meta-prompt on the server. The special id
+ * "custom" uses the free-text `instruction`. Throws QuotaExceededError on cloud
+ * quota exhaustion.
+ */
+export async function streamTransform(
   baseUrl: string,
-  body: { prompt: string; mode: string; instruction?: string },
+  body: { prompt: string; modes: string[]; instruction?: string },
   onChunk: (chunk: string) => void,
   signal?: AbortSignal,
   opts?: {
@@ -182,7 +190,7 @@ export async function streamEnhance(
     cloudEnabled: opts?.cloudEnabled ?? false,
   }
 
-  const res = await fetch(`${baseUrl}/api/v1/enhance`, {
+  const res = await fetch(`${baseUrl}/api/v1/transform`, {
     method: 'POST',
     headers,
     body: JSON.stringify(requestBody),
@@ -190,11 +198,43 @@ export async function streamEnhance(
   })
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText)
-    throw new Error(`Enhance failed (${res.status}): ${text}`)
+    throw new Error(`Transform failed (${res.status}): ${text}`)
   }
-  if (!res.body) throw new Error('No response body from enhance endpoint')
+  if (!res.body) throw new Error('No response body from transform endpoint')
 
   await _consumeSSE(res.body, onChunk, { onMeta: opts?.onMeta })
+}
+
+// ── Transform modes ──────────────────────────────────────────────────────────
+
+export async function fetchTransformModes(baseUrl: string): Promise<TransformMode[]> {
+  const res = await fetch(`${baseUrl}/api/v1/transform-modes`)
+  if (!res.ok) throw new Error(`Transform modes request failed: ${res.statusText}`)
+  const json: ApiResponse<TransformMode[]> = await res.json()
+  if (!json.success) throw new Error(json.error ?? 'Unknown error from transform-modes endpoint')
+  return json.data ?? []
+}
+
+export async function createTransformMode(
+  baseUrl: string,
+  data: { name: string; instruction: string },
+): Promise<TransformMode> {
+  const res = await fetch(`${baseUrl}/api/v1/transform-modes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(`Create transform mode failed: ${res.statusText}`)
+  const json: ApiResponse<TransformMode> = await res.json()
+  if (!json.success || !json.data) throw new Error(json.error ?? 'Create transform mode error')
+  return json.data
+}
+
+export async function deleteTransformMode(baseUrl: string, id: string): Promise<void> {
+  const res = await fetch(`${baseUrl}/api/v1/transform-modes/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`Delete transform mode failed: ${res.statusText}`)
+  const json: ApiResponse<null> = await res.json()
+  if (!json.success) throw new Error(json.error ?? 'Delete transform mode error')
 }
 
 // ── Prompts ───────────────────────────────────────────────────────────────────
