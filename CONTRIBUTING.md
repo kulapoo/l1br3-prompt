@@ -78,9 +78,9 @@ just build   # extension builds
 
 Mark the feature as completed (with a note) once acceptance criteria are met — not just when tests are green.
 
-## Claude Code Workflow
+## Development Workflow
 
-This project uses [Claude Code](https://claude.ai/code) with a planning toolchain. Each step in the development loop maps to a slash command:
+This project uses a planning toolchain for agile development. Each step in the development loop maps to a command:
 
 | Step | Command | Purpose |
 |------|---------|---------|
@@ -91,8 +91,6 @@ This project uses [Claude Code](https://claude.ai/code) with a planning toolchai
 | Code | `/tdd` | Test-driven RED-GREEN-REFACTOR loop |
 | Verify | `/verify` | Build + test + lint + typecheck loop |
 | Update status | `/sprint-update F# completed "note"` | Persist completion after acceptance criteria met |
-
-Behavioral rules are auto-enforced via `.claude/rules/workflow.md`.
 
 Additional commands:
 - `/sprint-plan` — decompose a phase into sprints with features and acceptance criteria
@@ -106,11 +104,7 @@ Additional commands:
 
 ## Code Style
 
-The project follows conventions documented in `.claude/rules/code-style.md` with language-specific details in:
-- `.claude/rules/python/coding-style.md`
-- `.claude/rules/typescript/coding-style.md`
-
-Pre-commit hooks handle formatting automatically (Ruff for Python, Prettier for TypeScript). Run `just format` to format manually.
+The project follows language-specific conventions. Pre-commit hooks handle formatting automatically (Ruff for Python, Prettier for TypeScript). Run `just format` to format manually.
 
 ## Project Structure
 

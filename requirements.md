@@ -18,7 +18,7 @@ A high-performance, cross-browser, and cross-platform application to store, mana
 |---|---|
 | **Browser Extensions** | Manifest V3 for Chrome and Firefox. MVP uses sidebar (Chrome Side Panel API, Firefox sidebar_action). |
 | **Mobile & Desktop** | Future-ready for iOS, Android, Windows, macOS via REST API or WebSocket. |
-| **AI Integration** | Compatibility as a "Tool" for Claude (MCP) and ChatGPT (Actions). |
+| **AI Integration** | Compatibility as a "Tool" for AI assistants (MCP) and ChatGPT (Actions). |
 
 ---
 
@@ -101,7 +101,7 @@ A high-performance, cross-browser, and cross-platform application to store, mana
 ### Post-MVP Features
 - Cloud sync (Supabase)
 - AI integration (Ollama)
-- MCP server for Claude/ChatGPT
+- MCP server for AI assistants/ChatGPT
 - Mobile & desktop apps
 
 ---
