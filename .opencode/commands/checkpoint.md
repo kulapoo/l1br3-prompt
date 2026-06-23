@@ -1,6 +1,7 @@
 ---
 description: Save verification state and progress checkpoint
-agent: everything-claude-code:build
+subtask: true
+agent: build
 ---
 
 # Checkpoint Command

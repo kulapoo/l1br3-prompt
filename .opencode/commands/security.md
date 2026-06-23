@@ -1,7 +1,7 @@
 ---
 description: Run comprehensive security review
-agent: everything-claude-code:security-reviewer
 subtask: true
+agent: build
 ---
 
 # Security Review Command

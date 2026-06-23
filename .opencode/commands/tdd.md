@@ -1,7 +1,6 @@
 ---
 description: Enforce TDD workflow with 80%+ coverage
-agent: everything-claude-code:tdd-guide
-subtask: true
+agent: build
 ---
 
 # TDD Command

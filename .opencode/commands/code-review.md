@@ -1,6 +1,7 @@
 ---
 description: Review code for quality, security, and maintainability
 subtask: true
+agent: build
 ---
 
 # Code Review Command

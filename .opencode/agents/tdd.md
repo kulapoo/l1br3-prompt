@@ -1,5 +1,6 @@
 ---
 description: Legacy slash-entry shim for the tdd-workflow skill. Prefer the skill directly.
+mode: subagent
 ---
 
 # TDD Command (Legacy Shim)

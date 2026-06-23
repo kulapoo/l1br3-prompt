@@ -1,0 +1,65 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "command": {
+    "dev": {
+      "template": "Run `just dev` to start the API and extension dev servers. If you encounter errors, check package.json or Justfile for the correct command and fix any issues.",
+      "description": "Start all dev servers",
+    },
+    "test": {
+      "template": "Run `just test` (API: pytest, skip with --api-only). Report failures and suggest fixes.",
+      "description": "Run test suite",
+    },
+    "lint": {
+      "template": "Run `just lint` (API: ruff, extension: tsc). Fix any linting or type errors.",
+      "description": "Run linters",
+    },
+    "build": {
+      "template": "Run `just build` to build the API and Chrome extension. Fix any build errors.",
+      "description": "Build project",
+    },
+    "clean": {
+      "template": "Run `just clean` to remove build artifacts.",
+      "description": "Clean build outputs",
+    },
+  },
+
+  "permission": {
+    "bash": "ask",
+    "read": "allow",
+    "edit": "ask",
+    "glob": "allow",
+    "grep": "allow",
+    "write": "ask",
+    "task": "ask",
+  },
+
+  "attachment": {
+    "image": {
+      "auto_resize": true,
+      "max_width": 2000,
+      "max_height": 2000,
+    },
+  },
+
+  "instructions": [".opencode/rules/**/*.md"],
+
+  "references": {
+    "backend": {
+      "path": "api/",
+      "description": "Python FastAPI backend",
+    },
+    "extension": {
+      "path": "browser-ext/",
+      "description": "WXT/React browser extension",
+    },
+    "rules": {
+      "path": ".opencode/rules/",
+      "description": "Style/workflow rules, including python/ and typescript/ subdirs",
+    },
+    "spec": {
+      "path": "requirements.md",
+      "description": "Full product specification",
+    },
+  },
+}

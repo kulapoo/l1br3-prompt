@@ -1,7 +1,7 @@
 ---
 description: Update documentation for recent changes
-agent: everything-claude-code:doc-updater
 subtask: true
+agent: build
 ---
 
 # Update Docs Command

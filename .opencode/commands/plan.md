@@ -1,6 +1,7 @@
 ---
 description: Restate requirements, assess risks, and create step-by-step implementation plan. WAIT for user CONFIRM before touching any code.
-argument-hint: "[feature description | path/to/*.prd.md]"
+argument-hint: "[feature description | docs/prds/*.prd.md]"
+agent: plan
 ---
 
 # Plan Command
@@ -41,7 +42,7 @@ The assistant will:
 
 | Input | Mode | Behavior |
 |---|---|---|
-| `path/to/name.prd.md` | PRD artifact mode | Read the PRD, pick the next pending delivery milestone or implementation phase, and write `docs/plans/{name}.plan.md` |
+| `docs/prds/*.prd.md` | PRD artifact mode | Read the PRD, pick the next pending delivery milestone or implementation phase, and write `docs/plans/{kebab-case-[prd-name]}.plan.md` |
 | Any other markdown path | Reference mode | Read the file as context and produce an inline plan |
 | Free-form text | Conversational mode | Produce an inline plan |
 | Empty input | Clarification mode | Ask what should be planned |
@@ -64,7 +65,7 @@ If no similar code exists, state that explicitly. Do not invent a pattern.
 
 ## PRD Artifact Output
 
-When called with a `.prd.md` file, write the plan to `docs/plans/{kebab-case-name}.plan.md` using this structure:
+When called with a `.prd.md` file, write the plan to `docs/plans/{kebab-case-[prd-name]}.plan.md` using this structure:
 
 ````markdown
 # Plan: {Feature Name}
