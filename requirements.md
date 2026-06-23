@@ -56,6 +56,7 @@ A high-performance, cross-browser, and cross-platform application to store, mana
 |---|---|
 | Local LLM (Default) | Ollama on localhost:11434 |
 | Cloud Fallback | Cloudflare Worker → Groq/Gemini |
+| Bring-Your-Own-Key (Phase 7) | OpenAI, Anthropic, OpenAI-compatible (LM Studio, vLLM, OpenRouter) |
 | MCP Server | Python, runs as part of local backend |
 | Rate Limiting | 50 req/day per user (cloud) |
 
@@ -193,6 +194,12 @@ WS     /ws                          # Real-time connection (local only)
 - Extension settings for cloud AI
 - Rate limiting and quota management
 
+### Phase 7: Multi-Provider Models Manager
+- **Models Manager** in Admin Mode: bring-your-own-key provider cards (OpenAI, Anthropic, OpenAI-compatible) alongside Local (Ollama) and Free Cloud
+- Per-purpose **Default Model Assignments** (Chat, Transformation) with auto-assign + missing-model warnings
+- API key storage (local-first now; encrypted backend storage to follow)
+- Frontend slice complete; backend provider classes + role-aware resolution pending
+
 ---
 
 ## 7. Cost Control & Free Tier Limits
@@ -214,6 +221,7 @@ WS     /ws                          # Real-time connection (local only)
 - **E2E Encryption** — Cloud sync data encrypted with user-controlled key (optional)
 - **No telemetry** — No telemetry without explicit consent
 - **Privacy-first AI** — Cloud AI proxy logs only rate-limiting counters, never prompt content
+- **Provider API keys (Phase 7)** — BYOK keys stored locally in the browser now; encrypted server-side key storage bound to 127.0.0.1 to follow
 - **Data ownership** — User can delete cloud data at any time and keep local copy
 - **Zero cost** — $0 for all features, forever, for users with local Ollama + free-tier sync
 

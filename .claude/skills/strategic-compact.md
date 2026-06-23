@@ -1,3 +1,8 @@
+---
+name: strategic-compact
+description: Suggest /compact at logical task boundaries instead of arbitrary auto-compaction. Use when sessions approach context limits or cross phase boundaries.
+---
+
 # Strategic Compaction
 
 Suggest `/compact` at logical task boundaries rather than relying on arbitrary

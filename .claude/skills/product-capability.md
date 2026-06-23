@@ -1,3 +1,8 @@
+---
+name: product-capability
+description: Translate phase requirements into implementation-ready capability plans exposing constraints, interfaces, and open decisions. Use before coding a feature.
+---
+
 # Product Capability Planning
 
 Translate phase requirements, roadmap items, or feature discussions into

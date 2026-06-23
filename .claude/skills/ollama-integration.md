@@ -1,3 +1,8 @@
+---
+name: ollama-integration
+description: Ollama local LLM integration for l1br3-prompt Phase 4. Use when wiring local AI providers in the api/ backend.
+---
+
 # Ollama Integration Skill
 
 Ollama enables running large language models locally. This skill covers integration with l1br3-prompt.

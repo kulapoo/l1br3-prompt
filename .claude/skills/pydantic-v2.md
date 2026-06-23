@@ -1,3 +1,8 @@
+---
+name: pydantic-v2
+description: Pydantic v2 validation patterns — BaseModel, Field, validators, config. Use when writing schemas/ in the api/ backend.
+---
+
 # Pydantic V2 Skill
 
 Pydantic v2 is a data validation and parsing library for Python using type hints.

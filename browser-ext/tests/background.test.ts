@@ -36,6 +36,14 @@ describe('openAdminTab', () => {
     })
   })
 
+  it('deep-links to a target view via the view query param', async () => {
+    const { openAdminTab } = await import('../entrypoints/background')
+    await openAdminTab('models')
+    expect(browserMock.tabs.create).toHaveBeenCalledWith({
+      url: 'chrome-extension://abc/admin.html?view=models',
+    })
+  })
+
   it('swallows errors from tabs.create', async () => {
     browserMock.tabs.create.mockRejectedValue(new Error('denied'))
     const { openAdminTab } = await import('../entrypoints/background')

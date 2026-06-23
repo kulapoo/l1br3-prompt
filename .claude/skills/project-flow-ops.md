@@ -1,3 +1,8 @@
+---
+name: project-flow-ops
+description: GitHub issue/PR triage and backlog flow operations — classify PRs, audit CI failures, prioritize work across phases. Use when triaging issues or PRs.
+---
+
 # Project Flow Ops
 
 Operate execution flow on GitHub by triaging issues and PRs, classifying work,

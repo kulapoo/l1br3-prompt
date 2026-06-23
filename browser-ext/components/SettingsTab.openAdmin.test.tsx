@@ -41,6 +41,7 @@ const mockConfig: AppConfig = {
     localConnected: false, cloudEnabled: false, cloudQuotaRemaining: 0,
     cloudQuotaTotal: 0, cloudQuotaResetAt: null, activeProvider: null,
     selectedModel: null, availableModels: [], deviceId: null,
+    providers: [], assignments: { chat: null, transform: null },
   },
   sync: {
     enabled: false, supabaseUrl: '', supabaseAnonKey: '', userId: null,
@@ -56,6 +57,7 @@ const ctx = {
   updateConfig: vi.fn(),
   setConfig: vi.fn(),
   updateSync: vi.fn(),
+  updateAi: vi.fn(),
   activeTab: 'settings' as const,
   setActiveTab: vi.fn(),
   editingPrompt: null as Prompt | null,
@@ -77,5 +79,14 @@ describe('SettingsTab — Open Admin Mode', () => {
     render(<SettingsTab />)
     fireEvent.click(screen.getByRole('button', { name: /open admin mode/i }))
     expect(browserMock.runtime.sendMessage).toHaveBeenCalledWith({ type: 'OPEN_ADMIN' })
+  })
+
+  it('sends OPEN_ADMIN with models target from the Manage models button', () => {
+    render(<SettingsTab />)
+    fireEvent.click(screen.getByRole('button', { name: /manage models/i }))
+    expect(browserMock.runtime.sendMessage).toHaveBeenCalledWith({
+      type: 'OPEN_ADMIN',
+      target: 'models',
+    })
   })
 })

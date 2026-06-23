@@ -1,3 +1,8 @@
+---
+name: wxt
+description: WXT cross-browser extension framework (Chrome/Firefox, Manifest V3, TypeScript). Use when working in browser-ext/ on entrypoints, wxt.config.ts, side panel, or content scripts.
+---
+
 # WXT Skill
 
 WXT is a cross-browser extension framework for building Chrome and Firefox extensions with TypeScript and modern tooling.

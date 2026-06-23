@@ -84,3 +84,35 @@ export interface AiStatus {
   };
   provider: 'ollama' | 'cloud' | null;
 }
+
+// ── AI Models Manager ────────────────────────────────────────────────────────
+
+export type ProviderType = 'openai' | 'anthropic' | 'openai_compatible' | 'ollama' | 'cloud';
+export type ProviderCapability = 'language' | 'embedding' | 'tts' | 'stt';
+export type ModelRole = 'chat' | 'transform';
+
+/**
+ * A user-configured AI provider. BYOK providers (openai / anthropic /
+ * openai_compatible) live in `AppConfig.ai.providers`. The fixed providers
+ * (ollama / cloud) are derived from the existing connection flags and are
+ * never stored in the providers array.
+ *
+ * NOTE: `apiKey` is held in browser.storage.local for now (same pattern as the
+ * Supabase anon key). Encrypted backend key storage arrives in a follow-up.
+ */
+export interface AiProviderConfig {
+  id: string;
+  type: ProviderType;
+  label: string;
+  baseUrl: string | null;
+  apiKey: string | null;
+  enabled: boolean;
+  capabilities: ProviderCapability[];
+  models: string[];
+  configured: boolean;
+}
+
+export interface ModelAssignment {
+  providerId: string;
+  model: string;
+}

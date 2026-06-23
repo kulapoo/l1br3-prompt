@@ -39,6 +39,7 @@ function makeConfig(overrides: { isInstalled?: boolean; url?: string } = {}): Ap
       localConnected: false, cloudEnabled: false, cloudQuotaRemaining: 0,
       cloudQuotaTotal: 0, cloudQuotaResetAt: null, activeProvider: null,
       selectedModel: null, availableModels: [], deviceId: null,
+      providers: [], assignments: { chat: null, transform: null },
     },
     sync: {
       enabled: false, supabaseUrl: '', supabaseAnonKey: '', userId: null,
@@ -56,6 +57,7 @@ function makeCtx(config: AppConfig) {
     updateConfig: vi.fn(),
     setConfig: vi.fn(),
     updateSync: vi.fn(),
+    updateAi: vi.fn(),
     activeTab: 'prompts' as const,
     setActiveTab: vi.fn(),
     editingPrompt: null as Prompt | null,

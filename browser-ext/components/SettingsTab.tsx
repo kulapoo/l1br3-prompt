@@ -13,7 +13,6 @@ import {
   ShieldCheck,
   Server,
   Info,
-  Lock,
   SlidersHorizontal,
   Sparkles,
   Plus,
@@ -115,7 +114,7 @@ type BackendTestState =
   | { kind: 'fail' };
 
 export function SettingsTab() {
-  const { config, updateConfig, updateSync } = useAppConfig();
+  const { config, updateConfig, updateSync, updateAi } = useAppConfig();
   const [editingAction, setEditingAction] = useState<QuickAction | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [supabaseUrlInput, setSupabaseUrlInput] = useState(config.sync.supabaseUrl);
@@ -200,21 +199,18 @@ export function SettingsTab() {
       includeCloud: config.ai.cloudEnabled,
     })
       .then((status) => {
-        updateConfig({
-          ai: {
-            ...config.ai,
-            availableModels: status.ollama.models,
-            selectedModel:
-              config.ai.selectedModel && status.ollama.models.includes(config.ai.selectedModel)
-                ? config.ai.selectedModel
-                : status.ollama.models[0] ?? null,
-            cloudQuotaRemaining: status.cloud?.quotaRemaining ?? config.ai.cloudQuotaRemaining,
-          },
+        updateAi({
+          availableModels: status.ollama.models,
+          selectedModel:
+            config.ai.selectedModel && status.ollama.models.includes(config.ai.selectedModel)
+              ? config.ai.selectedModel
+              : status.ollama.models[0] ?? null,
+          cloudQuotaRemaining: status.cloud?.quotaRemaining ?? config.ai.cloudQuotaRemaining,
         });
       })
       .catch(() => {
         // AI not running — clear model list but don't surface an error
-        updateConfig({ ai: { ...config.ai, availableModels: [], selectedModel: null } });
+        updateAi({ availableModels: [], selectedModel: null });
       });
   };
 
@@ -319,152 +315,74 @@ export function SettingsTab() {
           </div>
         </section>
 
-        {/* AI Connection */}
-        <section className="space-y-3 relative">
+        {/* AI Models (compact summary — full manager is in Admin Mode) */}
+        <section className="space-y-3">
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-            <Cpu size={14} /> AI Connection
+            <Cpu size={14} /> AI Models
           </h3>
 
-          {!config.backend.isInstalled &&
-          <div className="absolute inset-0 z-10 bg-slate-950/50 backdrop-blur-[1px] flex items-center justify-center rounded-xl mt-6">
-              <div className="bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
-                <Lock size={12} className="text-slate-400" />
-                <span className="text-[10px] font-medium text-slate-300">
-                  Requires Backend
-                </span>
-              </div>
-            </div>
-          }
-
-          <div
-            className={`space-y-3 ${!config.backend.isInstalled ? 'opacity-40 pointer-events-none' : ''}`}>
-
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="p-3 border-b border-slate-800 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-200">
-                    Local AI (Ollama)
-                  </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Free, unlimited, private
-                  </p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={config.ai.localConnected}
-                    onChange={(e) =>
-                    updateConfig({
-                      ai: {
-                        ...config.ai,
-                        localConnected: e.target.checked
-                      }
-                    })
-                    } />
-
-                  <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
-                </label>
-              </div>
-              <div className="p-3 bg-slate-900/50">
-                <label className="block text-xs text-slate-500 mb-1.5">
-                  Active Model
-                </label>
-                {config.ai.availableModels.length > 0 ? (
-                  <select
-                    value={config.ai.selectedModel ?? ''}
-                    onChange={(e) =>
-                      updateConfig({ ai: { ...config.ai, selectedModel: e.target.value } })
-                    }
-                    className="w-full bg-slate-950 border border-slate-800 rounded-md px-2 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
-                  >
-                    {config.ai.availableModels.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <p className="text-xs text-amber-500/80">
-                    No models found.{' '}
-                    <span className="underline cursor-pointer" onClick={() =>
-                      window.open('https://ollama.com', '_blank')
-                    }>
-                      Install Ollama
-                    </span>{' '}
-                    and run <code className="font-mono">ollama pull llama3:8b</code>.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="p-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-200">
-                    Cloud AI Fallback
-                  </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Groq / Gemini · used when Ollama is unavailable
-                  </p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={config.ai.cloudEnabled}
-                    onChange={(e) => {
-                      updateConfig({
-                        ai: {
-                          ...config.ai,
-                          cloudEnabled: e.target.checked
-                        }
-                      });
-                    }} />
-
-                  <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
-                </label>
-              </div>
-              {config.ai.cloudEnabled && (
-                <div className="px-3 pb-2 border-t border-slate-800 pt-2 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] text-slate-400">
-                      {config.ai.cloudQuotaRemaining}/{config.ai.cloudQuotaTotal} requests remaining today
-                      {config.ai.cloudQuotaResetAt && (
-                        <span className="text-slate-600">
-                          {' · resets at '}
-                          {new Date(config.ai.cloudQuotaResetAt).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      )}
-                    </p>
-                    <div className="w-20 h-1 bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-amber-500 rounded-full transition-all"
-                        style={{
-                          width: `${Math.max(0, (config.ai.cloudQuotaRemaining / Math.max(config.ai.cloudQuotaTotal, 1)) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-slate-600">
-                    Privacy: logs only anonymous rate-limit counters, never your prompts.{' '}
-                    <span
-                      className="underline cursor-pointer text-slate-500 hover:text-slate-400"
-                      onClick={() => window.open('https://github.com/kulaskulapoo/l1br3-prompt/blob/main/docs/cloud-ai-setup.md', '_blank')}
-                    >
-                      Learn more
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            {/* Default model summary */}
+            <div className="p-3 border-b border-slate-800 space-y-2">
+              {([
+                ['Chat', config.ai.assignments.chat],
+                ['Transformation', config.ai.assignments.transform],
+              ] as const).map(([role, assignment]) => {
+                const label = !assignment
+                  ? null
+                  : assignment.providerId === 'ollama'
+                    ? `${assignment.model} · Ollama`
+                    : assignment.providerId === 'cloud'
+                      ? 'Free Cloud'
+                      : `${assignment.model} · ${config.ai.providers.find((p) => p.id === assignment.providerId)?.label ?? 'Provider'}`;
+                return (
+                  <div key={role} className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-slate-500">{role}</span>
+                    <span className={`text-xs font-medium truncate ${label ? 'text-slate-200' : 'text-slate-600 italic'}`}>
+                      {label ?? 'Not set'}
                     </span>
-                  </p>
-                </div>
-              )}
-              {!config.ai.cloudEnabled && (
-                <div className="px-3 pb-2">
-                  <p className="text-[10px] text-slate-600">
-                    Privacy: logs only anonymous rate-limit counters, never your prompts.
-                  </p>
-                </div>
-              )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Provider status pills */}
+            <div className="px-3 py-2.5 border-b border-slate-800">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { label: 'Ollama', on: config.ai.localConnected },
+                  { label: 'Free Cloud', on: config.ai.cloudEnabled },
+                  ...config.ai.providers.map((p) => ({ label: p.label, on: p.configured })),
+                ].map((p, i) => (
+                  <span
+                    key={`${p.label}-${i}`}
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium border bg-slate-950 border-slate-800"
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full ${p.on ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+                    <span className={p.on ? 'text-slate-300' : 'text-slate-600'}>{p.label}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Manage models */}
+            <div className="p-3">
+              <button
+                type="button"
+                onClick={() => {
+                  browser.runtime.sendMessage({ type: 'OPEN_ADMIN', target: 'models' }).catch(() => {});
+                }}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-md transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <Cpu size={14} /> Manage models
+                </span>
+                <ExternalLink size={12} className="text-slate-400" />
+              </button>
+              <p className="mt-2 text-[10px] text-slate-500 leading-relaxed">
+                Open the Models Manager in Admin Mode to add API keys (OpenAI, Anthropic, OpenAI
+                Compatible) and assign default models.
+              </p>
             </div>
           </div>
         </section>

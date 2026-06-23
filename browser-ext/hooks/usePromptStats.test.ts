@@ -32,6 +32,7 @@ const mockConfig: AppConfig = {
     localConnected: false, cloudEnabled: false, cloudQuotaRemaining: 0,
     cloudQuotaTotal: 0, cloudQuotaResetAt: null, activeProvider: null,
     selectedModel: null, availableModels: [], deviceId: null,
+    providers: [], assignments: { chat: null, transform: null },
   },
   sync: {
     enabled: false, supabaseUrl: '', supabaseAnonKey: '', userId: null,
@@ -47,6 +48,7 @@ const baseCtx = {
   updateConfig: vi.fn(),
   setConfig: vi.fn(),
   updateSync: vi.fn(),
+  updateAi: vi.fn(),
   activeTab: 'compose' as const,
   setActiveTab: vi.fn(),
   editingPrompt: null as Prompt | null,

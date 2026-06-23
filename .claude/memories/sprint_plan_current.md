@@ -18,6 +18,7 @@ Created: 2026-04-12
 | 4 — Local AI (Ollama) | Done | 100% |
 | 5 — Cloud Sync (Supabase) | In Progress | ~85% |
 | 6 — Cloud AI Fallback | Done | ~95% |
+| 7 — Multi-Provider Models Manager | In Progress (frontend slice done) | ~40% |
 
 ## Goal
 
@@ -146,6 +147,17 @@ Finish the browser extension MVP by wiring existing UI components to the backend
 - **Complexity**: High | **Depends on**: F13 (Enhance), Phase 6 (cloud fallback)
 - **Status**: Done (2026-06-23) — full Enhance→Transform rename across BE/FE/schema. `POST /api/v1/transform` SSE + `/transform-modes` CRUD + migration 003 (`transform_modes` table) + `TransformMode` ORM/repo. Combined-modes meta-prompt (single LLM stream); `resolve_instructions` merges builtin slug ids + custom UUID ids + "custom" pseudo-id. In-Compose `TransformPanel` below editor: multi-select chips, saved custom modes, selection-aware transform, whole-text confirmation dialog. Placeholder-removal directive in meta-prompt (input preserved for context). Backend `test_transform.py` (23 tests); `TransformPanel.test.tsx` (13 tests); `AdminLayout.test.tsx` updated (Stats-only right column). Verified: 121 API + 168 ext tests green, tsc clean, ruff introduces 0 new errors.
 
+### F15. AI Models Manager (Multi-Provider BYOK + Default Model Assignments)
+- Full **Models Manager** page in Admin Mode (top-nav "Models" view): bring-your-own-key provider cards (OpenAI, Anthropic, OpenAI Compatible) alongside the existing Local (Ollama) and Free Cloud (Groq/Gemini) cards; per-purpose **Default Model Assignments** (Chat, Transformation); Test/Models/Edit/Delete per provider; removable model pills; Auto-assign Defaults; missing-required-model warning banner
+- Provider configs + model assignments persisted in `browser.storage.local` via `AppConfig.ai` (new `providers: AiProviderConfig[]` + `assignments: Record<ModelRole, ModelAssignment|null>`); new `updateAi()` context helper
+- **Adapted** the source layout (Open Notebook) to l1br3's real surfaces: Primary = Chat Model (required, `/generate`), Advanced = Transformation Model (required, `/transform`); dropped Embedding/TTS/STT/Tools/Large-Context roles (no such features yet) — role set is data-driven for future extension
+- API keys held in `browser.storage.local` for now (same pattern as the Supabase anon key); **encrypted backend key storage + real upstream provider classes (OpenAI/Anthropic/OpenAI-compatible) + role-aware `resolve_provider` are deferred to a follow-up DB/backend sprint**
+- Sidebar `SettingsTab`: old two-card AI Connection section replaced with a compact **AI Models** summary card (current defaults + provider status pills + "Manage models →" deep-link)
+- `OPEN_ADMIN` message accepts `{ target: 'models' }` → admin opens at `admin.html?view=models`
+- **Files**: `browser-ext/components/models/{ModelsManager,DefaultModelAssignments,ProviderCard,ProviderEditModal,providerMeta}.tsx`, `components/AdminLayout.tsx`, `components/SettingsTab.tsx`, `contexts/AppConfig.tsx`, `lib/storage.ts`, `types/index.ts`, `entrypoints/background.ts`; tests `components/models/ModelsManager.test.tsx`, `tests/background.test.ts`, `components/SettingsTab.openAdmin.test.tsx` + 8 fixture updates
+- **Complexity**: High | **Depends on**: F14 (Transform), Phase 4 (Ollama), Phase 6 (Cloud)
+- **Status**: Done (2026-06-23) — frontend Models Manager shipped (UI + state, local-only key storage). 178 ext tests green (8 new in ModelsManager.test, +2 across background/SettingsTab), tsc clean, Chrome build emits admin.html + sidepanel.html. Backend provider wiring + encrypted DB key storage tracked as Phase 7 remainder (future sprint).
+
 ## Dependency Graph
 
 ```
@@ -156,6 +168,7 @@ F3 (Save)          <-- F5 (Edit flow)
 F7 (Categories)     parallel with F2-F4
 F8 (Offline cache)  parallel with F2-F4
 F13 (Enhance)       <-- F14 (Transform refactor)
+F14 (Transform) + Phase 4 (Ollama) + Phase 6 (Cloud) <-- F15 (Models Manager)
 Sprint 3 features are independent of each other
 ```
 

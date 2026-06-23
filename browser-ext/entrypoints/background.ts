@@ -58,18 +58,21 @@ export default defineBackground(() => {
   // Sidepanel asks us to open the admin workbench in a new tab.
   browser.runtime.onMessage.addListener((message: unknown) => {
     if (typeof message === 'object' && message !== null && (message as { type?: string }).type === 'OPEN_ADMIN') {
-      void openAdminTab()
+      const target = (message as { target?: string }).target
+      void openAdminTab(target)
     }
   })
 })
 
 /**
  * Open the admin workbench page in a new browser tab. Exported for testing.
+ * An optional `target` (e.g. 'models') deep-links to a specific admin view.
  */
-export async function openAdminTab(): Promise<void> {
+export async function openAdminTab(target?: string): Promise<void> {
   try {
-    const url = browser.runtime.getURL('/admin.html')
-    await browser.tabs.create({ url })
+    const url = new URL(browser.runtime.getURL('/admin.html'))
+    if (target) url.searchParams.set('view', target)
+    await browser.tabs.create({ url: url.href })
   } catch {
     // Tab API failures are silent — user can retry from Settings.
   }

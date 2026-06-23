@@ -1,3 +1,8 @@
+---
+name: supabase-sync
+description: Supabase cloud sync integration (Postgres, Auth, Realtime) for l1br3-prompt Phase 5. Use when working on optional cloud sync.
+---
+
 # Supabase Sync Skill
 
 Supabase provides free-tier PostgreSQL, Auth, Realtime, and Storage for l1br3-prompt cloud sync.

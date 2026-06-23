@@ -26,6 +26,8 @@ export async function saveConfig(config: AppConfig): Promise<void> {
       selectedModel: config.ai.selectedModel,
       availableModels: config.ai.availableModels,
       deviceId: config.ai.deviceId,
+      providers: config.ai.providers,
+      assignments: config.ai.assignments,
       // activeProvider is session-only — reset to null on reload
     },
     sync: config.sync,

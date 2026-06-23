@@ -1,3 +1,8 @@
+---
+name: fastapi
+description: FastAPI best practices for l1br3-prompt — async endpoints, SQLAlchemy async sessions, Pydantic v2, ApiResponse envelope. Use when working on api/ routes or services.
+---
+
 # FastAPI Best Practices for l1br3-prompt
 
 > **Project Constraints:**

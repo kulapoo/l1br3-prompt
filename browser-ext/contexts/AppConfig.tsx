@@ -1,6 +1,6 @@
 import React, { useState, createContext, useContext, useEffect } from 'react';
 import { loadConfig, saveConfig } from '../lib/storage';
-import type { TabType, Prompt } from '../types';
+import type { TabType, Prompt, AiProviderConfig, ModelRole, ModelAssignment } from '../types';
 
 export type QuickActionSource =
 {
@@ -48,6 +48,10 @@ export interface AppConfig {
     selectedModel: string | null;
     availableModels: string[];
     deviceId: string | null;
+    /** User-configured BYOK providers (openai / anthropic / openai_compatible). */
+    providers: AiProviderConfig[];
+    /** Per-role default model selection. */
+    assignments: Record<ModelRole, ModelAssignment | null>;
   };
   sync: {
     enabled: boolean;
@@ -71,6 +75,7 @@ interface AppConfigContextType {
   setConfig: React.Dispatch<React.SetStateAction<AppConfig>>;
   updateConfig: (updates: Partial<AppConfig>) => void;
   updateSync: (updates: Partial<AppConfig['sync']>) => void;
+  updateAi: (updates: Partial<AppConfig['ai']>) => void;
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
   editingPrompt: Prompt | null;
@@ -156,6 +161,8 @@ export const defaultConfig: AppConfig = {
     selectedModel: null,
     availableModels: [],
     deviceId: null,
+    providers: [],
+    assignments: { chat: null, transform: null },
   },
   sync: {
     enabled: false,
@@ -221,6 +228,13 @@ export function AppConfigProvider({ children }: {children: React.ReactNode;}) {
     }));
   };
 
+  const updateAi = (updates: Partial<AppConfig['ai']>) => {
+    setConfig((prev) => ({
+      ...prev,
+      ai: { ...prev.ai, ...updates }
+    }));
+  };
+
   return (
     <AppConfigContext.Provider
       value={{
@@ -228,6 +242,7 @@ export function AppConfigProvider({ children }: {children: React.ReactNode;}) {
         setConfig,
         updateConfig,
         updateSync,
+        updateAi,
         activeTab,
         setActiveTab,
         editingPrompt,

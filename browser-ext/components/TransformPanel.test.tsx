@@ -75,6 +75,7 @@ const baseConfig: AppConfig = {
     selectedModel: 'llama3:8b',
     availableModels: ['llama3:8b'],
     deviceId: 'dev-1',
+    providers: [], assignments: { chat: null, transform: null },
   },
   sync: {
     enabled: false,
@@ -98,6 +99,7 @@ const ctx = {
   updateConfig: vi.fn(),
   setConfig: vi.fn(),
   updateSync: vi.fn(),
+  updateAi: vi.fn(),
   activeTab: 'compose' as const,
   setActiveTab: vi.fn(),
   editingPrompt: null,
