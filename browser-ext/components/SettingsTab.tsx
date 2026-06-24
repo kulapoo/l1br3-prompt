@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { fetchAiStatus, pingBackend } from '../lib/api';
-import { createSupabaseClient, signInWithOAuth, signOut as supabaseSignOut, getRedirectUri, type OAuthProvider } from '../lib/supabase';
-import { SyncService } from '../lib/sync';
 import {
-  Cloud,
   Database,
   Cpu,
   HardDrive,
   Download,
   Upload,
   Trash2,
-  ShieldCheck,
   Server,
   Info,
   SlidersHorizontal,
@@ -114,12 +110,9 @@ type BackendTestState =
   | { kind: 'fail' };
 
 export function SettingsTab() {
-  const { config, updateConfig, updateSync, updateAi } = useAppConfig();
+  const { config, updateConfig, updateAi } = useAppConfig();
   const [editingAction, setEditingAction] = useState<QuickAction | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [supabaseUrlInput, setSupabaseUrlInput] = useState(config.sync.supabaseUrl);
-  const [supabaseAnonKeyInput, setSupabaseAnonKeyInput] = useState(config.sync.supabaseAnonKey);
-  const [authError, setAuthError] = useState<string | null>(null);
   const [backendTest, setBackendTest] = useState<BackendTestState>({ kind: 'idle' });
 
   const handleTestBackend = async () => {
@@ -133,71 +126,10 @@ export function SettingsTab() {
     }
   };
 
-  const isSignedIn = config.sync.userId !== null;
-  const credentialsSaved = config.sync.supabaseUrl !== '' && config.sync.supabaseAnonKey !== '';
-
-  const handleSaveCredentials = () => {
-    updateSync({ supabaseUrl: supabaseUrlInput, supabaseAnonKey: supabaseAnonKeyInput });
-  };
-
-  const handleSignIn = async (provider: OAuthProvider) => {
-    setAuthError(null);
-    updateSync({ syncStatus: 'syncing', syncError: null });
-    try {
-      const supabase = createSupabaseClient(config.sync.supabaseUrl, config.sync.supabaseAnonKey);
-      const session = await signInWithOAuth(supabase, provider);
-      updateSync({
-        userId: session.user.id,
-        accessToken: session.access_token,
-        refreshToken: session.refresh_token,
-        syncStatus: 'idle',
-        enabled: true,
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setAuthError(msg);
-      updateSync({ syncStatus: 'error', syncError: msg });
-    }
-  };
-
-  const handleSignOut = async () => {
-    if (credentialsSaved && isSignedIn) {
-      try {
-        const supabase = createSupabaseClient(config.sync.supabaseUrl, config.sync.supabaseAnonKey);
-        await supabaseSignOut(supabase);
-      } catch { /* ignore sign-out errors */ }
-    }
-    updateSync({
-      userId: null, accessToken: null, refreshToken: null,
-      enabled: false, syncStatus: 'idle', syncError: null,
-    });
-  };
-
-  const handleSyncNow = async () => {
-    if (!isSignedIn || !config.sync.accessToken || !config.sync.userId) return;
-    updateSync({ syncStatus: 'syncing', syncError: null });
-    try {
-      const supabase = createSupabaseClient(config.sync.supabaseUrl, config.sync.supabaseAnonKey);
-      const service = new SyncService(config.backend.url, supabase, config.sync.accessToken, config.sync.userId);
-      const result = await service.performSync();
-      updateSync({
-        syncStatus: result.errors.length > 0 ? 'error' : 'success',
-        lastSyncTime: new Date().toISOString(),
-        syncError: result.errors.length > 0 ? result.errors[0] : null,
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      updateSync({ syncStatus: 'error', syncError: msg });
-    }
-  };
-
-  // Fetch AI status whenever backend connection or cloud toggle changes.
+  // Fetch AI status whenever backend connection changes.
   const refreshAiStatus = () => {
     if (!config.backend.isInstalled) return;
-    fetchAiStatus(config.backend.url, {
-      deviceId: config.ai.deviceId,
-      includeCloud: config.ai.cloudEnabled,
-    })
+    fetchAiStatus(config.backend.url)
       .then((status) => {
         updateAi({
           availableModels: status.ollama.models,
@@ -205,7 +137,6 @@ export function SettingsTab() {
             config.ai.selectedModel && status.ollama.models.includes(config.ai.selectedModel)
               ? config.ai.selectedModel
               : status.ollama.models[0] ?? null,
-          cloudQuotaRemaining: status.cloud?.quotaRemaining ?? config.ai.cloudQuotaRemaining,
         });
       })
       .catch(() => {
@@ -217,7 +148,7 @@ export function SettingsTab() {
   useEffect(() => {
     refreshAiStatus();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [config.backend.isInstalled, config.backend.url, config.ai.cloudEnabled]);
+  }, [config.backend.isInstalled, config.backend.url]);
 
   return (
     <div className="flex flex-col h-full">
@@ -307,9 +238,9 @@ export function SettingsTab() {
             <div className="p-3 bg-slate-900/50 flex items-start gap-2">
               <Info size={14} className="text-slate-500 shrink-0 mt-0.5" />
               <p className="text-[10px] text-slate-400 leading-relaxed">
-                The local backend enables AI suggestions, cloud sync, and
-                advanced template processing. Install it from the releases page —
-                this panel will detect it automatically.
+                The local backend enables AI suggestions and advanced template
+                processing. Install it from the releases page — this panel will
+                detect it automatically.
               </p>
             </div>
           </div>
@@ -332,9 +263,7 @@ export function SettingsTab() {
                   ? null
                   : assignment.providerId === 'ollama'
                     ? `${assignment.model} · Ollama`
-                    : assignment.providerId === 'cloud'
-                      ? 'Free Cloud'
-                      : `${assignment.model} · ${config.ai.providers.find((p) => p.id === assignment.providerId)?.label ?? 'Provider'}`;
+                    : `${assignment.model} · ${config.ai.providers.find((p) => p.id === assignment.providerId)?.label ?? 'Provider'}`;
                 return (
                   <div key={role} className="flex items-center justify-between gap-2">
                     <span className="text-xs text-slate-500">{role}</span>
@@ -351,7 +280,6 @@ export function SettingsTab() {
               <div className="flex flex-wrap items-center gap-1.5">
                 {[
                   { label: 'Ollama', on: config.ai.localConnected },
-                  { label: 'Free Cloud', on: config.ai.cloudEnabled },
                   ...config.ai.providers.map((p) => ({ label: p.label, on: p.configured })),
                 ].map((p, i) => (
                   <span
@@ -383,157 +311,6 @@ export function SettingsTab() {
                 Open the Models Manager in Admin Mode to add API keys (OpenAI, Anthropic, OpenAI
                 Compatible) and assign default models.
               </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Cloud Sync */}
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-            <Cloud size={14} /> Cloud Sync
-          </h3>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-
-            {/* Step 1 — Supabase credentials */}
-            <div className="p-3 border-b border-slate-800 space-y-2">
-              <p className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
-                <Database size={12} /> Your Supabase Project
-              </p>
-              <p className="text-[10px] text-slate-500 leading-relaxed">
-                Bring your own free{' '}
-                <a href="https://supabase.com" target="_blank" rel="noreferrer" className="text-indigo-400 underline">
-                  Supabase
-                </a>{' '}
-                project. See{' '}
-                <span className="text-slate-400">docs/supabase-setup.md</span> for setup.
-              </p>
-              <input
-                type="url"
-                placeholder="https://xxxx.supabase.co"
-                value={supabaseUrlInput}
-                onChange={(e) => setSupabaseUrlInput(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 font-mono"
-              />
-              <input
-                type="password"
-                placeholder="Anon / public key"
-                value={supabaseAnonKeyInput}
-                onChange={(e) => setSupabaseAnonKeyInput(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 font-mono"
-              />
-              <button
-                onClick={handleSaveCredentials}
-                disabled={!supabaseUrlInput || !supabaseAnonKeyInput}
-                className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 text-xs font-medium rounded-md transition-colors">
-                Save credentials
-              </button>
-            </div>
-
-            {/* Step 2 — OAuth sign-in */}
-            {credentialsSaved && !isSignedIn && (
-              <div className="p-3 border-b border-slate-800 space-y-2">
-                <p className="text-xs font-medium text-slate-300">Sign in</p>
-                <p className="text-[10px] text-slate-500 break-all">
-                  Redirect URI to add in Supabase → Auth → Redirect URLs:{' '}
-                  <span className="font-mono text-slate-400">{getRedirectUri()}</span>
-                </p>
-
-                {authError && (
-                  <p className="text-[10px] text-rose-400 bg-rose-900/20 border border-rose-800/50 rounded p-2">
-                    {authError}
-                  </p>
-                )}
-
-                <button
-                  onClick={() => handleSignIn('google')}
-                  disabled={config.sync.syncStatus === 'syncing'}
-                  className="w-full flex items-center justify-center gap-2 py-2 bg-white text-slate-900 rounded-lg text-sm font-medium hover:bg-slate-100 disabled:opacity-60 transition-colors">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                  </svg>
-                  Sign in with Google
-                </button>
-
-                <button
-                  onClick={() => handleSignIn('github')}
-                  disabled={config.sync.syncStatus === 'syncing'}
-                  className="w-full flex items-center justify-center gap-2 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-60 text-slate-200 rounded-lg text-sm font-medium transition-colors">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-                  </svg>
-                  Sign in with GitHub
-                </button>
-              </div>
-            )}
-
-            {/* Step 3 — Sync controls (signed in) */}
-            {isSignedIn && (
-              <div className="p-3 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-200">Sync enabled</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Realtime when open · 30-min reconciliation when closed
-                    </p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={config.sync.enabled}
-                      onChange={(e) => updateSync({ enabled: e.target.checked })}
-                    />
-                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-slate-400">
-                    {config.sync.syncStatus === 'syncing' && '⟳ Syncing…'}
-                    {config.sync.syncStatus === 'success' && `✓ Last sync: ${config.sync.lastSyncTime ? new Date(config.sync.lastSyncTime).toLocaleTimeString() : 'just now'}`}
-                    {config.sync.syncStatus === 'error' && <span className="text-rose-400">✕ {config.sync.syncError}</span>}
-                    {config.sync.syncStatus === 'idle' && (config.sync.lastSyncTime ? `Last sync: ${new Date(config.sync.lastSyncTime).toLocaleTimeString()}` : 'Never synced')}
-                  </span>
-                  <button
-                    onClick={handleSyncNow}
-                    disabled={config.sync.syncStatus === 'syncing' || !config.backend.isInstalled}
-                    className="font-medium text-indigo-400 hover:text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                    Sync now
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-1.5 text-[10px]">
-                  {config.sync.realtimeStatus === 'idle' && (
-                    <span className="text-slate-600">Realtime: off</span>
-                  )}
-                  {config.sync.realtimeStatus === 'connecting' && (
-                    <span className="text-amber-400">⟳ Realtime connecting…</span>
-                  )}
-                  {config.sync.realtimeStatus === 'live' && (
-                    <span className="text-emerald-400">● Realtime live</span>
-                  )}
-                  {config.sync.realtimeStatus === 'reconnecting' && (
-                    <span className="text-amber-400">⟳ Realtime reconnecting…</span>
-                  )}
-                  {config.sync.realtimeStatus === 'error' && (
-                    <span className="text-rose-400">✕ Realtime: {config.sync.realtimeError}</span>
-                  )}
-                </div>
-
-                <button
-                  onClick={handleSignOut}
-                  className="w-full py-1.5 text-[10px] text-rose-400 hover:text-rose-300 border border-slate-800 rounded-md hover:border-rose-800/50 transition-colors">
-                  Sign out
-                </button>
-              </div>
-            )}
-
-            <div className="px-3 py-2 bg-slate-900/50 flex items-center gap-2 text-[10px] text-slate-500">
-              <ShieldCheck size={12} /> Your prompts stay on your machine. Sync is optional.
             </div>
           </div>
         </section>

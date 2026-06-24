@@ -2,18 +2,21 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A local-first prompt management tool — store, organize, compose, and get AI-powered suggestions for prompts. Ships as a browser extension sidebar so your prompt library is always one keystroke away (`Ctrl+Shift+Y`). All data stays on your machine; cloud sync and AI features are optional.
+A local-first prompt management tool — store, organize, compose, and get AI-powered suggestions for prompts. Ships as a browser extension sidebar so your prompt library is always one keystroke away (`Ctrl+Shift+Y`). All data stays on your machine.
 
 ## Status
 
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Local Backend (FastAPI + SQLite) | ✅ Complete |
-| 2 | Browser Extension Sidebar (MVP UI) | 🔵 In Progress |
+| 2 | Browser Extension Sidebar (MVP UI) | ✅ Complete |
 | 3 | Transform (AI Prompt Rewriting) | ✅ Complete |
 | 4 | Local AI Integration (Ollama) | ✅ Complete |
-| 5 | Optional Cloud Sync (Supabase) | 🔵 In Progress |
-| 6 | Free Cloud AI Fallback | ✅ Complete |
+| 5 | Multi-Provider Models Manager | 🔵 In Progress (~40%) |
+| 6 | Pluggable Database Store | ⚪ Planned |
+
+> See [`docs/roadmap.md`](docs/roadmap.md) for the authoritative EPIC register,
+> feature-level status, and the PRD backlog.
 
 ## Tech Stack
 
@@ -91,21 +94,21 @@ l1br3-prompt/
 
 ## AI Setup
 
-### Local AI with Ollama (Phase 4)
-
-> Full backend wiring lands in Phase 4. The Settings UI is already in place.
+### Local AI with Ollama
 
 1. Install [Ollama](https://ollama.ai) and pull a model:
    ```bash
    ollama pull llama3
    ollama serve          # runs on localhost:11434
    ```
-2. In the extension: **Settings → AI Connection → Local AI (Ollama)** toggle ON
+2. In the extension: **Settings → AI Models** — verify the Ollama provider is detected
 3. Select your installed model from the dropdown
 
-### Cloud AI Fallback (Phase 6, coming soon)
+### Bring Your Own Key (BYOK)
 
-Groq and Gemini APIs via a Cloudflare Worker proxy — **no API key required from you**. Opt-in only; 50 requests/day free tier. Disabled by default.
+For non-local providers (OpenAI, Anthropic, OpenAI-compatible endpoints), open the
+**Models Manager** in Admin Mode and add your API keys. Keys are stored locally in
+your browser; encrypted server-side storage arrives in a follow-up.
 
 ## License
 

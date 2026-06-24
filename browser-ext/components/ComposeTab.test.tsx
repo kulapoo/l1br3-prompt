@@ -1,98 +1,99 @@
-import React from 'react'
-import { render, screen, fireEvent, act } from '@testing-library/react'
-import { vi, describe, it, expect, beforeEach } from 'vitest'
-import type { AppConfig } from '../contexts/AppConfig'
-import type { Prompt } from '../types'
+import React from "react"
+import { render, screen, fireEvent, act } from "@testing-library/react"
+import { vi, describe, it, expect, beforeEach } from "vitest"
+import type { AppConfig } from "../contexts/AppConfig"
+import type { Prompt } from "../types"
 
 type OnUpdateCallback = (args: { editor: { getText: () => string } }) => void
 let capturedOnUpdate: OnUpdateCallback | undefined
 
 // Minimal editor mock: non-null so pre-fill useEffect runs past the `if (!editor)` guard
 const chainEnd = { run: vi.fn() }
-const chainFocus: Record<string, () => typeof chainEnd> = new Proxy({}, {
-  get: () => () => chainFocus,
-})
+const chainFocus: Record<string, () => typeof chainEnd> = new Proxy(
+  {},
+  {
+    get: () => () => chainFocus,
+  },
+)
 Object.assign(chainFocus, { run: vi.fn() })
 
 const mockEditor = {
   commands: { setContent: vi.fn(), clearContent: vi.fn() },
   chain: () => chainFocus,
   isActive: () => false,
-  state: { selection: { from: 0, to: 0 }, doc: { textBetween: () => '' } },
-  getHTML: () => '<p>Updated content</p>',
-  getText: vi.fn(() => 'Updated content'),
+  state: { selection: { from: 0, to: 0 }, doc: { textBetween: () => "" } },
+  getHTML: () => "<p>Updated content</p>",
+  getText: vi.fn(() => "Updated content"),
   isEmpty: false,
 }
 
-vi.mock('@tiptap/react', () => ({
+vi.mock("@tiptap/react", () => ({
   useEditor: (opts?: Record<string, unknown>) => {
     capturedOnUpdate = opts?.onUpdate as OnUpdateCallback | undefined
     return mockEditor
   },
-  EditorContent: () => React.createElement('div', { 'data-testid': 'tiptap-editor' }),
+  EditorContent: () => React.createElement("div", { "data-testid": "tiptap-editor" }),
 }))
 
-vi.mock('@tiptap/starter-kit', () => ({ default: { configure: () => ({}) } }))
-vi.mock('@tiptap/extension-placeholder', () => ({ default: { configure: () => ({}) } }))
+vi.mock("@tiptap/starter-kit", () => ({ default: { configure: () => ({}) } }))
+vi.mock("@tiptap/extension-placeholder", () => ({ default: { configure: () => ({}) } }))
 
-vi.mock('framer-motion', () => ({
-  motion: { div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => React.createElement('div', props, children) },
+vi.mock("framer-motion", () => ({
+  motion: {
+    div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => React.createElement("div", props, children),
+  },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
 }))
 
-vi.mock('../lib/api', () => ({
+vi.mock("../lib/api", () => ({
   streamGenerate: vi.fn(),
-  QuotaExceededError: class extends Error {},
   processTemplate: vi.fn(),
   callApiSource: vi.fn(),
   callMcpTool: vi.fn(),
 }))
 
-vi.mock('../lib/compose', () => ({
+vi.mock("../lib/compose", () => ({
   composePromptFor: vi.fn(),
   shapeApiBody: vi.fn((content, variables) => ({ content, variables })),
   shapeMcpArgs: vi.fn((content, variables) => ({ content, ...variables })),
 }))
 
-vi.mock('../contexts/AppConfig', () => ({ useAppConfig: vi.fn() }))
-vi.mock('../hooks/usePromptMutations', () => ({
+vi.mock("../contexts/AppConfig", () => ({ useAppConfig: vi.fn() }))
+vi.mock("../hooks/usePromptMutations", () => ({
   useCreatePrompt: vi.fn(),
   useUpdatePrompt: vi.fn(),
 }))
-vi.mock('../hooks/useCategories', () => ({ useCategories: vi.fn() }))
-vi.mock('./TransformPanel', () => ({
-  TransformPanel: () => React.createElement('div', { 'data-testid': 'transform-panel' }),
+vi.mock("../hooks/useCategories", () => ({ useCategories: vi.fn() }))
+vi.mock("./TransformPanel", () => ({
+  TransformPanel: () => React.createElement("div", { "data-testid": "transform-panel" }),
 }))
 
-import { useAppConfig } from '../contexts/AppConfig'
-import * as mutations from '../hooks/usePromptMutations'
-import { useCategories } from '../hooks/useCategories'
-import * as api from '../lib/api'
-import { ComposeTab } from './ComposeTab'
+import { useAppConfig } from "../contexts/AppConfig"
+import * as mutations from "../hooks/usePromptMutations"
+import { useCategories } from "../hooks/useCategories"
+import * as api from "../lib/api"
+import { ComposeTab } from "./ComposeTab"
 
 const mockConfig: AppConfig = {
-  backend: { isInstalled: true, url: 'http://localhost:8000' },
+  backend: { isInstalled: true, url: "http://localhost:8000" },
   ai: {
-    localConnected: false, cloudEnabled: false, cloudQuotaRemaining: 0,
-    cloudQuotaTotal: 0, cloudQuotaResetAt: null, activeProvider: null,
-    selectedModel: null, availableModels: [], deviceId: null,
-    providers: [], assignments: { chat: null, transform: null },
+    localConnected: false,
+    activeProvider: null,
+    selectedModel: null,
+    availableModels: [],
+    providers: [],
+    assignments: { chat: null, transform: null },
   },
-  sync: {
-    enabled: false, supabaseUrl: '', supabaseAnonKey: '', userId: null,
-    accessToken: null, refreshToken: null, lastSyncTime: null,
-    syncStatus: 'idle', syncError: null, realtimeStatus: 'idle', realtimeError: null,
-  },
-  viewMode: 'sidebar',
+  viewMode: "sidebar",
   quickActions: [],
 }
 
 const editingPrompt: Prompt = {
-  id: '42',
-  title: 'My Prompt',
-  content: '<p>Hello</p>',
-  tags: [{ id: 'tag-1', name: 'test-tag', color: '#fff' }],
-  category: '',
+  id: "42",
+  title: "My Prompt",
+  content: "<p>Hello</p>",
+  tags: [{ id: "tag-1", name: "test-tag", color: "#fff" }],
+  category: "",
   usageCount: 0,
   lastUsed: null,
   isFavorite: false,
@@ -105,172 +106,196 @@ const baseContext = {
   config: mockConfig,
   updateConfig: vi.fn(),
   setConfig: vi.fn(),
-  updateSync: vi.fn(),
   updateAi: vi.fn(),
-  activeTab: 'compose' as const,
+  activeTab: "compose" as const,
   setActiveTab: vi.fn(),
   editingPrompt: null as Prompt | null,
   setEditingPrompt: vi.fn(),
 }
 
 beforeEach(() => {
-  vi.mocked(mutations.useCreatePrompt).mockReturnValue({ mutate: createMutate, isPending: false } as unknown as ReturnType<typeof mutations.useCreatePrompt>)
-  vi.mocked(mutations.useUpdatePrompt).mockReturnValue({ mutate: updateMutate, isPending: false } as unknown as ReturnType<typeof mutations.useUpdatePrompt>)
-  vi.mocked(useCategories).mockReturnValue({ categories: ['Writing', 'Code'], isLoading: false, isFromCache: false })
+  vi.mocked(mutations.useCreatePrompt).mockReturnValue({
+    mutate: createMutate,
+    isPending: false,
+  } as unknown as ReturnType<typeof mutations.useCreatePrompt>)
+  vi.mocked(mutations.useUpdatePrompt).mockReturnValue({
+    mutate: updateMutate,
+    isPending: false,
+  } as unknown as ReturnType<typeof mutations.useUpdatePrompt>)
+  vi.mocked(useCategories).mockReturnValue({ categories: ["Writing", "Code"], isLoading: false, isFromCache: false })
   createMutate.mockReset()
   updateMutate.mockReset()
   mockEditor.commands.setContent.mockClear()
   mockEditor.commands.clearContent.mockClear()
-  mockEditor.getText.mockReturnValue('Updated content')
+  mockEditor.getText.mockReturnValue("Updated content")
   capturedOnUpdate = undefined
 })
 
-describe('ComposeTab — edit mode', () => {
-  it('renders Edit Prompt header and Update button when editingPrompt is set', () => {
+describe("ComposeTab — edit mode", () => {
+  it("renders Edit Prompt header and Update button when editingPrompt is set", () => {
     vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt })
 
     render(React.createElement(ComposeTab))
 
-    expect(screen.getByText('Edit Prompt')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /update/i })).toBeInTheDocument()
-    expect(screen.getByDisplayValue('My Prompt')).toBeInTheDocument()
+    expect(screen.getByText("Edit Prompt")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /update/i })).toBeInTheDocument()
+    expect(screen.getByDisplayValue("My Prompt")).toBeInTheDocument()
   })
 
-  it('calls updateMutation (not createMutation) when Update is clicked in edit mode', () => {
+  it("calls updateMutation (not createMutation) when Update is clicked in edit mode", () => {
     vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt })
 
     render(React.createElement(ComposeTab))
 
-    fireEvent.click(screen.getByRole('button', { name: /update/i }))
+    fireEvent.click(screen.getByRole("button", { name: /update/i }))
 
     expect(updateMutate).toHaveBeenCalledOnce()
-    expect(updateMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ id: '42' }),
-      expect.any(Object),
-    )
+    expect(updateMutate).toHaveBeenCalledWith(expect.objectContaining({ id: "42" }), expect.any(Object))
     expect(createMutate).not.toHaveBeenCalled()
   })
 
-  it('pre-fills editor content and tags from editingPrompt', () => {
+  it("pre-fills editor content and tags from editingPrompt", () => {
     vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt })
 
     render(React.createElement(ComposeTab))
 
     expect(mockEditor.commands.setContent).toHaveBeenCalledWith(editingPrompt.content)
-    expect(screen.getByText('test-tag')).toBeInTheDocument()
+    expect(screen.getByText("test-tag")).toBeInTheDocument()
   })
 
-  it('Cancel clears draft, calls setEditingPrompt(null), and does not switch tabs', () => {
+  it("Cancel clears draft, calls setEditingPrompt(null), and does not switch tabs", () => {
     const setEditingPrompt = vi.fn()
     const setActiveTab = vi.fn()
     vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt, setEditingPrompt, setActiveTab })
 
     render(React.createElement(ComposeTab))
-    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }))
 
     expect(setEditingPrompt).toHaveBeenCalledWith(null)
     expect(setActiveTab).not.toHaveBeenCalled()
     expect(mockEditor.commands.clearContent).toHaveBeenCalled()
   })
 
-  it('onSuccess resets draft, calls setEditingPrompt(null), and switches to prompts after 800ms', () => {
+  it("onSuccess resets draft, calls setEditingPrompt(null), and switches to prompts after 800ms", () => {
     vi.useFakeTimers()
     const setEditingPrompt = vi.fn()
     const setActiveTab = vi.fn()
     vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt, setEditingPrompt, setActiveTab })
 
     render(React.createElement(ComposeTab))
-    fireEvent.click(screen.getByRole('button', { name: /update/i }))
+    fireEvent.click(screen.getByRole("button", { name: /update/i }))
 
-    const [, { onSuccess }] = updateMutate.mock.calls[0] as [unknown, { onSuccess: () => void; onError: (e: Error) => void }]
-    act(() => { onSuccess() })
+    const [, { onSuccess }] = updateMutate.mock.calls[0] as [
+      unknown,
+      { onSuccess: () => void; onError: (e: Error) => void },
+    ]
+    act(() => {
+      onSuccess()
+    })
 
     expect(setEditingPrompt).toHaveBeenCalledWith(null)
     expect(setActiveTab).not.toHaveBeenCalled()
 
-    act(() => { vi.advanceTimersByTime(800) })
-    expect(setActiveTab).toHaveBeenCalledWith('prompts')
+    act(() => {
+      vi.advanceTimersByTime(800)
+    })
+    expect(setActiveTab).toHaveBeenCalledWith("prompts")
 
     vi.useRealTimers()
   })
 
-  it('onError surfaces saveError banner and preserves editingPrompt for retry', () => {
+  it("onError surfaces saveError banner and preserves editingPrompt for retry", () => {
     const setEditingPrompt = vi.fn()
     vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt, setEditingPrompt })
 
     render(React.createElement(ComposeTab))
-    fireEvent.click(screen.getByRole('button', { name: /update/i }))
+    fireEvent.click(screen.getByRole("button", { name: /update/i }))
 
-    const [, { onError }] = updateMutate.mock.calls[0] as [unknown, { onSuccess: () => void; onError: (e: Error) => void }]
-    act(() => { onError(new Error('Network error')) })
+    const [, { onError }] = updateMutate.mock.calls[0] as [
+      unknown,
+      { onSuccess: () => void; onError: (e: Error) => void },
+    ]
+    act(() => {
+      onError(new Error("Network error"))
+    })
 
-    expect(screen.getByText('Network error')).toBeInTheDocument()
+    expect(screen.getByText("Network error")).toBeInTheDocument()
     expect(setEditingPrompt).not.toHaveBeenCalled()
   })
 
-  it('entering edit mode clears stale variables from a prior draft', () => {
+  it("entering edit mode clears stale variables from a prior draft", () => {
     vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt: null })
     const { rerender } = render(React.createElement(ComposeTab))
 
     // Simulate user having {{old_var}} in the editor during create mode
     act(() => {
-      capturedOnUpdate?.({ editor: { getText: () => '{{old_var}} is here' } })
+      capturedOnUpdate?.({ editor: { getText: () => "{{old_var}} is here" } })
     })
-    expect(screen.getByText('{{old_var}}')).toBeInTheDocument()
+    expect(screen.getByText("{{old_var}}")).toBeInTheDocument()
 
     // Switch to edit mode with a prompt whose content has no template variables
-    mockEditor.getText.mockReturnValue('Hello world')
+    mockEditor.getText.mockReturnValue("Hello world")
     vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt })
     rerender(React.createElement(ComposeTab))
 
-    expect(screen.queryByText('{{old_var}}')).not.toBeInTheDocument()
+    expect(screen.queryByText("{{old_var}}")).not.toBeInTheDocument()
   })
 })
 
-describe('ComposeTab — category', () => {
-  it('pre-fills category input with editingPrompt.category when editing', () => {
-    const promptWithCategory = { ...editingPrompt, category: 'Writing' }
+describe("ComposeTab — category", () => {
+  it("pre-fills category input with editingPrompt.category when editing", () => {
+    const promptWithCategory = { ...editingPrompt, category: "Writing" }
     vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt: promptWithCategory })
 
     render(React.createElement(ComposeTab))
 
-    expect(screen.getByDisplayValue('Writing')).toBeInTheDocument()
+    expect(screen.getByDisplayValue("Writing")).toBeInTheDocument()
   })
 
-  it('datalist#category-options renders one <option> per category from useCategories', () => {
+  it("datalist#category-options renders one <option> per category from useCategories", () => {
     vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt: null })
 
     const { container } = render(React.createElement(ComposeTab))
 
-    const datalist = container.querySelector('datalist#category-options')
+    const datalist = container.querySelector("datalist#category-options")
     expect(datalist).not.toBeNull()
-    expect(datalist!.querySelectorAll('option')).toHaveLength(2)
+    expect(datalist!.querySelectorAll("option")).toHaveLength(2)
     expect(datalist!.querySelector('option[value="Writing"]')).toBeInTheDocument()
     expect(datalist!.querySelector('option[value="Code"]')).toBeInTheDocument()
   })
 
-  it('save payload includes the current category from the form', () => {
-    const promptWithCategory = { ...editingPrompt, category: 'Writing' }
+  it("save payload includes the current category from the form", () => {
+    const promptWithCategory = { ...editingPrompt, category: "Writing" }
     vi.mocked(useAppConfig).mockReturnValue({ ...baseContext, editingPrompt: promptWithCategory })
 
     render(React.createElement(ComposeTab))
-    fireEvent.click(screen.getByRole('button', { name: /update/i }))
+    fireEvent.click(screen.getByRole("button", { name: /update/i }))
 
     expect(updateMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ category: 'Writing' }) }),
+      expect.objectContaining({ data: expect.objectContaining({ category: "Writing" }) }),
       expect.any(Object),
     )
   })
 })
 
-describe('ComposeTab — modifier actions', () => {
+describe("ComposeTab — modifier actions", () => {
   const apiAction = {
-    id: 'a1', label: 'Enhance', description: '', insertText: 'fallback', color: '#fff', enabled: true,
-    source: { type: 'api' as const, url: 'http://example.com/enhance', method: 'POST' },
+    id: "a1",
+    label: "Enhance",
+    description: "",
+    insertText: "fallback",
+    color: "#fff",
+    enabled: true,
+    source: { type: "api" as const, url: "http://example.com/enhance", method: "POST" },
   }
   const mcpAction = {
-    id: 'a2', label: 'List', description: '', insertText: 'fallback', color: '#fff', enabled: true,
-    source: { type: 'mcp' as const, toolName: 'list_prompts' },
+    id: "a2",
+    label: "List",
+    description: "",
+    insertText: "fallback",
+    color: "#fff",
+    enabled: true,
+    source: { type: "mcp" as const, toolName: "list_prompts" },
   }
 
   beforeEach(() => {
@@ -280,12 +305,12 @@ describe('ComposeTab — modifier actions', () => {
 
   async function openModifiersPanel() {
     await act(async () => {
-      fireEvent.click(screen.getByText('Modifiers', { selector: 'span, button' }))
+      fireEvent.click(screen.getByText("Modifiers", { selector: "span, button" }))
     })
   }
 
-  it('api modifier inserts data.rendered on success', async () => {
-    vi.mocked(api.callApiSource).mockResolvedValue('improved text')
+  it("api modifier inserts data.rendered on success", async () => {
+    vi.mocked(api.callApiSource).mockResolvedValue("improved text")
     vi.mocked(useAppConfig).mockReturnValue({
       ...baseContext,
       config: { ...mockConfig, quickActions: [apiAction] },
@@ -294,18 +319,18 @@ describe('ComposeTab — modifier actions', () => {
     render(React.createElement(ComposeTab))
     await openModifiersPanel()
     await act(async () => {
-      fireEvent.click(screen.getByText('Enhance'))
+      fireEvent.click(screen.getByText("Enhance"))
     })
 
     expect(vi.mocked(api.callApiSource)).toHaveBeenCalledWith(
-      'http://example.com/enhance',
-      'POST',
+      "http://example.com/enhance",
+      "POST",
       expect.objectContaining({ content: expect.any(String) }),
     )
   })
 
-  it('api modifier falls back to insertText on failure', async () => {
-    vi.mocked(api.callApiSource).mockRejectedValue(new Error('network error'))
+  it("api modifier falls back to insertText on failure", async () => {
+    vi.mocked(api.callApiSource).mockRejectedValue(new Error("network error"))
     vi.mocked(useAppConfig).mockReturnValue({
       ...baseContext,
       config: { ...mockConfig, quickActions: [apiAction] },
@@ -314,14 +339,14 @@ describe('ComposeTab — modifier actions', () => {
     render(React.createElement(ComposeTab))
     await openModifiersPanel()
     await act(async () => {
-      fireEvent.click(screen.getByText('Enhance'))
+      fireEvent.click(screen.getByText("Enhance"))
     })
 
     expect(screen.getByText(/API modifier failed/)).toBeInTheDocument()
   })
 
-  it('mcp modifier inserts result on success', async () => {
-    vi.mocked(api.callMcpTool).mockResolvedValue('mcp result')
+  it("mcp modifier inserts result on success", async () => {
+    vi.mocked(api.callMcpTool).mockResolvedValue("mcp result")
     vi.mocked(useAppConfig).mockReturnValue({
       ...baseContext,
       config: { ...mockConfig, quickActions: [mcpAction] },
@@ -330,18 +355,18 @@ describe('ComposeTab — modifier actions', () => {
     render(React.createElement(ComposeTab))
     await openModifiersPanel()
     await act(async () => {
-      fireEvent.click(screen.getByText('List'))
+      fireEvent.click(screen.getByText("List"))
     })
 
     expect(vi.mocked(api.callMcpTool)).toHaveBeenCalledWith(
-      'http://localhost:8000',
-      'list_prompts',
+      "http://localhost:8000",
+      "list_prompts",
       expect.objectContaining({ content: expect.any(String) }),
     )
   })
 
-  it('mcp modifier falls back to insertText on failure', async () => {
-    vi.mocked(api.callMcpTool).mockRejectedValue(new Error('tool error'))
+  it("mcp modifier falls back to insertText on failure", async () => {
+    vi.mocked(api.callMcpTool).mockRejectedValue(new Error("tool error"))
     vi.mocked(useAppConfig).mockReturnValue({
       ...baseContext,
       config: { ...mockConfig, quickActions: [mcpAction] },
@@ -350,9 +375,100 @@ describe('ComposeTab — modifier actions', () => {
     render(React.createElement(ComposeTab))
     await openModifiersPanel()
     await act(async () => {
-      fireEvent.click(screen.getByText('List'))
+      fireEvent.click(screen.getByText("List"))
     })
 
     expect(screen.getByText(/MCP modifier failed/)).toBeInTheDocument()
+  })
+})
+
+describe("ComposeTab — role-aware chat routing (M2)", () => {
+  const ollamaAction = {
+    id: "gen",
+    label: "Generate",
+    description: "",
+    insertText: "fallback",
+    color: "#fff",
+    enabled: true,
+    source: { type: "ollama" as const, prompt: "enhance" },
+  }
+
+  const openAiProvider: AppConfig["ai"]["providers"][number] = {
+    id: "p1",
+    type: "openai",
+    label: "OpenAI",
+    baseUrl: null,
+    apiKey: "sk-secret",
+    enabled: true,
+    capabilities: ["language"],
+    models: ["gpt-4o"],
+    configured: true,
+  }
+
+  async function openModifiersPanel() {
+    await act(async () => {
+      fireEvent.click(screen.getByText("Modifiers", { selector: "span, button" }))
+    })
+  }
+
+  beforeEach(() => {
+    vi.mocked(api.streamGenerate).mockReset()
+    vi.mocked(api.streamGenerate).mockResolvedValue(undefined)
+  })
+
+  it("forwards the chat BYOK assignment as a byok field to streamGenerate", async () => {
+    vi.mocked(useAppConfig).mockReturnValue({
+      ...baseContext,
+      config: {
+        ...mockConfig,
+        quickActions: [ollamaAction],
+        ai: {
+          ...mockConfig.ai,
+          providers: [openAiProvider],
+          assignments: {
+            chat: { providerId: "p1", model: "gpt-4o" },
+            transform: null,
+          },
+        },
+      },
+    })
+
+    render(React.createElement(ComposeTab))
+    await openModifiersPanel()
+    await act(async () => {
+      fireEvent.click(screen.getByText("Generate"))
+    })
+
+    expect(vi.mocked(api.streamGenerate)).toHaveBeenCalledWith(
+      "http://localhost:8000",
+      expect.objectContaining({
+        model: "gpt-4o",
+        byok: { type: "openai", apiKey: "sk-secret", baseUrl: null, model: "gpt-4o" },
+      }),
+      expect.any(Function),
+      expect.any(Object),
+      expect.any(Object),
+    )
+  })
+
+  it("omits byok and uses the local fallback model when no chat assignment exists", async () => {
+    vi.mocked(useAppConfig).mockReturnValue({
+      ...baseContext,
+      config: {
+        ...mockConfig,
+        quickActions: [ollamaAction],
+        ai: { ...mockConfig.ai, selectedModel: "llama3:8b" },
+      },
+    })
+
+    render(React.createElement(ComposeTab))
+    await openModifiersPanel()
+    await act(async () => {
+      fireEvent.click(screen.getByText("Generate"))
+    })
+
+    const callArgs = vi.mocked(api.streamGenerate).mock.calls[0]
+    expect(callArgs?.[1].byok).toBeUndefined()
+    expect(callArgs?.[1].model).toBe("llama3:8b")
   })
 })

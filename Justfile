@@ -29,15 +29,11 @@ dev-ext-ff:
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
 # Run all tests
-test: test-api test-worker test-ext
+test: test-api test-ext
 
 # API tests (pytest)
 test-api:
     cd api && uv run pytest
-
-# Cloudflare Worker tests (vitest)
-test-worker:
-    cd workers/cloud-ai && pnpm test
 
 # Browser extension tests (vitest)
 test-ext:
@@ -106,20 +102,6 @@ format-ext:
 # Format API (Python)
 format-api:
     cd api && uv run ruff format .
-
-# ── Cloud Worker (Phase 6) ────────────────────────────────────────────────────
-
-# Start Cloudflare Worker locally (requires wrangler, KV bindings pre-created)
-dev-worker:
-    cd workers/cloud-ai && pnpm dlx wrangler dev --local --port 8787
-
-# Deploy Cloudflare Worker to workers.dev
-deploy-worker:
-    cd workers/cloud-ai && pnpm dlx wrangler deploy
-
-# Install worker dependencies
-install-worker:
-    cd workers/cloud-ai && pnpm install
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
 

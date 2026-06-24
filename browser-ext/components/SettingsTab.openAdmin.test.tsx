@@ -16,13 +16,6 @@ vi.mock('../lib/api', () => ({
   }),
   pingBackend: vi.fn().mockResolvedValue(false),
 }))
-vi.mock('../lib/supabase', () => ({
-  createSupabaseClient: vi.fn(),
-  signInWithOAuth: vi.fn(),
-  signOut: vi.fn(),
-  getRedirectUri: vi.fn(),
-}))
-vi.mock('../lib/sync', () => ({ SyncService: vi.fn() }))
 vi.mock('framer-motion', () => ({
   motion: {
     div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) =>
@@ -38,15 +31,10 @@ import { SettingsTab } from './SettingsTab'
 const mockConfig: AppConfig = {
   backend: { isInstalled: true, url: 'http://localhost:8000' },
   ai: {
-    localConnected: false, cloudEnabled: false, cloudQuotaRemaining: 0,
-    cloudQuotaTotal: 0, cloudQuotaResetAt: null, activeProvider: null,
-    selectedModel: null, availableModels: [], deviceId: null,
+    localConnected: false,
+    activeProvider: null,
+    selectedModel: null, availableModels: [],
     providers: [], assignments: { chat: null, transform: null },
-  },
-  sync: {
-    enabled: false, supabaseUrl: '', supabaseAnonKey: '', userId: null,
-    accessToken: null, refreshToken: null, lastSyncTime: null,
-    syncStatus: 'idle', syncError: null, realtimeStatus: 'idle', realtimeError: null,
   },
   viewMode: 'sidebar',
   quickActions: [],
@@ -56,7 +44,6 @@ const ctx = {
   config: mockConfig,
   updateConfig: vi.fn(),
   setConfig: vi.fn(),
-  updateSync: vi.fn(),
   updateAi: vi.fn(),
   activeTab: 'settings' as const,
   setActiveTab: vi.fn(),

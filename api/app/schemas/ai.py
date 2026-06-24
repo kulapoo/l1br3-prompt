@@ -13,21 +13,11 @@ class OllamaStatus(BaseModel):
     models: list[str] = []
 
 
-class CloudStatus(BaseModel):
-    model_config = _camel
-
-    reachable: bool
-    quota_remaining: int = 0
-    quota_total: int = 50
-    reset_at: str | None = None
-
-
 class AiStatusResponse(BaseModel):
     model_config = _camel
 
     ollama: OllamaStatus
-    cloud: CloudStatus | None = None
-    provider: Literal["ollama", "cloud"] | None = None
+    provider: Literal["ollama"] | None = None
 
 
 ByokProviderType = Literal["openai", "anthropic", "openai_compatible"]
@@ -54,7 +44,6 @@ class GenerateRequest(BaseModel):
     prompt: str
     model: str | None = None
     options: dict | None = None
-    cloud_enabled: bool = False
     byok: ByokProviderConfig | None = None
 
 

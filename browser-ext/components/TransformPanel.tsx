@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react'
-import { Wand2, X, RefreshCw, Plus } from 'lucide-react'
-import type { Editor } from '@tiptap/react'
-import { useAppConfig } from '../contexts/AppConfig'
-import { useTransformModes } from '../hooks/useTransformModes'
-import { streamTransform, QuotaExceededError } from '../lib/api'
-import { TransformConfirmDialog } from './TransformConfirmDialog'
+import { useRef, useState } from "react"
+import { Wand2, X, RefreshCw, Plus } from "lucide-react"
+import type { Editor } from "@tiptap/react"
+import { useAppConfig } from "../contexts/AppConfig"
+import { useTransformModes } from "../hooks/useTransformModes"
+import { streamTransform } from "../lib/api"
+import { resolveRoleProvider } from "../lib/roleRouter"
+import { TransformConfirmDialog } from "./TransformConfirmDialog"
 
 interface TransformPanelProps {
   editor: Editor | null
@@ -21,20 +22,18 @@ export function TransformPanel({ editor }: TransformPanelProps) {
   const { modes, createMode, removeMode } = useTransformModes()
 
   const [selected, setSelected] = useState<string[]>([])
-  const [customInstruction, setCustomInstruction] = useState('')
-  const [customName, setCustomName] = useState('')
+  const [customInstruction, setCustomInstruction] = useState("")
+  const [customName, setCustomName] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [provider, setProvider] = useState<'ollama' | 'cloud' | null>(null)
+  const [provider, setProvider] = useState<"ollama" | string | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
-  const aiAvailable =
-    config.backend.isInstalled &&
-    (config.ai.availableModels.length > 0 || config.ai.cloudEnabled)
+  const aiAvailable = config.backend.isInstalled && config.ai.availableModels.length > 0
 
   const editorEmpty = !editor?.getText().trim()
-  const wantsCustom = selected.includes('custom')
+  const wantsCustom = selected.includes("custom")
 
   // Disabled when no mode is selected (and not streaming — during streaming the
   // button flips to a Cancel affordance and must stay enabled).
@@ -48,14 +47,18 @@ export function TransformPanel({ editor }: TransformPanelProps) {
   const runTransform = async (whole: boolean) => {
     if (!editor) return
     const { from, to } = editor.state.selection
-    const target = whole ? editor.getText() : editor.state.doc.textBetween(from, to, ' ')
+    const target = whole ? editor.getText() : editor.state.doc.textBetween(from, to, " ")
     if (!target.trim()) return
 
     abortRef.current = new AbortController()
     setIsStreaming(true)
     setError(null)
 
-    let result = ''
+    const resolved = resolveRoleProvider("transform", config.ai.providers, config.ai.assignments, {
+      fallbackModel: config.ai.selectedModel,
+    })
+
+    let result = ""
     try {
       await streamTransform(
         config.backend.url,
@@ -63,14 +66,14 @@ export function TransformPanel({ editor }: TransformPanelProps) {
           prompt: target,
           modes: selected,
           instruction: wantsCustom ? customInstruction.trim() || undefined : undefined,
+          model: resolved.model,
+          byok: resolved.byok,
         },
         (chunk) => {
           result += chunk
         },
         abortRef.current.signal,
         {
-          deviceId: config.ai.deviceId,
-          cloudEnabled: config.ai.cloudEnabled,
           onMeta: (m) => {
             setProvider(m.provider)
             updateConfig({ ai: { ...config.ai, activeProvider: m.provider } })
@@ -84,14 +87,7 @@ export function TransformPanel({ editor }: TransformPanelProps) {
         editor.chain().focus().setTextSelection({ from, to }).deleteSelection().insertContent(result).run()
       }
     } catch (err) {
-      if (err instanceof QuotaExceededError) {
-        const resetAt = err.resetAt
-          ? new Date(err.resetAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          : 'tomorrow'
-        setError(
-          `Cloud quota exhausted, resets at ${resetAt}. Install Ollama for unlimited local AI.`,
-        )
-      } else if (err instanceof Error && err.name !== 'AbortError') {
+      if (err instanceof Error && err.name !== "AbortError") {
         setError(err.message)
       }
     } finally {
@@ -128,9 +124,9 @@ export function TransformPanel({ editor }: TransformPanelProps) {
       { name, instruction },
       {
         onSuccess: () => {
-          setCustomName('')
-          setCustomInstruction('')
-          setSelected((prev) => prev.filter((m) => m !== 'custom'))
+          setCustomName("")
+          setCustomInstruction("")
+          setSelected((prev) => prev.filter((m) => m !== "custom"))
         },
         onError: (e) => setError(e.message),
       },
@@ -145,7 +141,7 @@ export function TransformPanel({ editor }: TransformPanelProps) {
           <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Transform</h3>
         </div>
         <p className="text-[10px] text-slate-500 leading-relaxed">
-          AI not available. Connect Ollama or enable cloud AI in Settings to transform prompts.
+          AI not available. Connect Ollama in Settings to transform prompts.
         </p>
       </div>
     )
@@ -158,9 +154,7 @@ export function TransformPanel({ editor }: TransformPanelProps) {
           <Wand2 size={12} className="text-indigo-400" />
           <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Transform</h3>
         </div>
-        {provider && (
-          <span className="text-[9px] text-slate-500 uppercase tracking-wider">{provider}</span>
-        )}
+        {provider && <span className="text-[9px] text-slate-500 uppercase tracking-wider">{provider}</span>}
       </div>
 
       {/* Mode chips (built-in + saved custom) */}
@@ -171,7 +165,7 @@ export function TransformPanel({ editor }: TransformPanelProps) {
             <div key={mode.id} className="relative group">
               <button
                 onClick={() => toggle(mode.id)}
-                className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${active ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-slate-600'}`}
+                className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${active ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/40" : "bg-slate-800 text-slate-300 border-slate-700 hover:border-slate-600"}`}
               >
                 {mode.name}
               </button>
@@ -189,8 +183,8 @@ export function TransformPanel({ editor }: TransformPanelProps) {
         })}
         {/* Custom pseudo-mode */}
         <button
-          onClick={() => toggle('custom')}
-          className={`text-[10px] px-2 py-1 rounded-md border transition-colors flex items-center gap-1 ${wantsCustom ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-slate-600'}`}
+          onClick={() => toggle("custom")}
+          className={`text-[10px] px-2 py-1 rounded-md border transition-colors flex items-center gap-1 ${wantsCustom ? "bg-purple-500/20 text-purple-300 border-purple-500/40" : "bg-slate-800 text-slate-300 border-slate-700 hover:border-slate-600"}`}
         >
           <Plus size={9} /> Custom
         </button>
@@ -218,7 +212,7 @@ export function TransformPanel({ editor }: TransformPanelProps) {
               disabled={!customName.trim() || !customInstruction.trim() || createMode.isPending}
               className="px-2 py-1 text-[10px] bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-md"
             >
-              {createMode.isPending ? 'Saving…' : 'Save'}
+              {createMode.isPending ? "Saving…" : "Save"}
             </button>
           </div>
         </div>
@@ -238,7 +232,7 @@ export function TransformPanel({ editor }: TransformPanelProps) {
       <button
         onClick={handleTransformClick}
         disabled={buttonDisabled}
-        className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-md transition-colors ${isStreaming ? 'bg-rose-600 hover:bg-rose-500 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 disabled:cursor-not-allowed'}`}
+        className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-md transition-colors ${isStreaming ? "bg-rose-600 hover:bg-rose-500 text-white" : "bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 disabled:cursor-not-allowed"}`}
       >
         {isStreaming ? (
           <>
@@ -253,14 +247,10 @@ export function TransformPanel({ editor }: TransformPanelProps) {
 
       <p className="text-[9px] text-slate-600 leading-relaxed">
         Select text to transform just the selection, or transform the whole prompt. Placeholders like
-        <span className="font-mono"> {'{{variable}}'} </span> will be removed from the result.
+        <span className="font-mono"> {"{{variable}}"} </span> will be removed from the result.
       </p>
 
-      <TransformConfirmDialog
-        open={confirmOpen}
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={handleConfirm}
-      />
+      <TransformConfirmDialog open={confirmOpen} onCancel={() => setConfirmOpen(false)} onConfirm={handleConfirm} />
     </div>
   )
 }

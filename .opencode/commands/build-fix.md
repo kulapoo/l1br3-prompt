@@ -8,7 +8,7 @@ agent: build
 
 Fix build, type, and lint errors with minimal changes: $ARGUMENTS
 
-This project has three independent stacks. First **detect which one(s) are failing**, then apply stack-specific fixes.
+This project has two independent stacks. First **detect which one(s) are failing**, then apply stack-specific fixes.
 
 ## Stack Map
 
@@ -16,7 +16,6 @@ This project has three independent stacks. First **detect which one(s) are faili
 |-------|------|-------|-----------------|-------|
 | Python API | `api/` | `just build-api` | `cd api && uv run ruff check .` | `just test-api` |
 | Browser extension (TS) | `browser-ext/` | `just build-ext` | `cd browser-ext && npm run compile` | `just test-ext` |
-| Cloudflare Worker (TS) | `workers/cloud-ai/` | — | `cd workers/cloud-ai && pnpm tsc --noEmit` | `just test-worker` |
 
 Or run everything at once: `just lint`, `just test`, `just build`.
 
@@ -52,7 +51,7 @@ Or run everything at once: `just lint`, `just test`, `just build`.
 
 ## Common Error Fixes
 
-### TypeScript (extension + worker)
+### TypeScript (extension)
 
 | Error | Fix |
 |-------|-----|
@@ -78,7 +77,7 @@ Or run everything at once: `just lint`, `just test`, `just build`.
 After fixes, all of these must pass:
 
 1. `just lint` — ruff (API) + tsc (extension) clean
-2. `just test` — pytest + vitest suites pass
+2. `just test` — pytest + vitest extension suite pass
 3. `just build` — API + extension build succeeds
 
 If only one stack was broken, still confirm the others haven't regressed.

@@ -90,7 +90,7 @@ const _internalHelper = () => {}
 - **Why**, not what: `// Sort by usage count to show most-used prompts first`
 - **Clarify assumptions**: `// Assumes prompts are already sorted`
 - **Document non-obvious logic**: Complex algorithms, hacks, workarounds
-- **TODOs**: `// TODO: Implement cloud sync conflict resolution`
+- **TODOs**: `// TODO: Add offline cache invalidation hook`
 
 ### When NOT to Comment
 

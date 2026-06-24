@@ -1,8 +1,8 @@
 # Pluggable Database Store
 
 ```yaml
-epic: EPIC-8
-feature: F21
+epic: EPIC-6
+feature: F17
 ```
 
 ## Problem

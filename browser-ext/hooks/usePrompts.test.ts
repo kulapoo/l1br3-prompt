@@ -36,15 +36,10 @@ function makeConfig(overrides: { isInstalled?: boolean; url?: string } = {}): Ap
   return {
     backend: { isInstalled: overrides.isInstalled ?? true, url: overrides.url ?? URL_A },
     ai: {
-      localConnected: false, cloudEnabled: false, cloudQuotaRemaining: 0,
-      cloudQuotaTotal: 0, cloudQuotaResetAt: null, activeProvider: null,
-      selectedModel: null, availableModels: [], deviceId: null,
+      localConnected: false,
+      activeProvider: null,
+      selectedModel: null, availableModels: [],
       providers: [], assignments: { chat: null, transform: null },
-    },
-    sync: {
-      enabled: false, supabaseUrl: '', supabaseAnonKey: '', userId: null,
-      accessToken: null, refreshToken: null, lastSyncTime: null,
-      syncStatus: 'idle', syncError: null, realtimeStatus: 'idle', realtimeError: null,
     },
     viewMode: 'sidebar',
     quickActions: [],
@@ -56,7 +51,6 @@ function makeCtx(config: AppConfig) {
     config,
     updateConfig: vi.fn(),
     setConfig: vi.fn(),
-    updateSync: vi.fn(),
     updateAi: vi.fn(),
     activeTab: 'prompts' as const,
     setActiveTab: vi.fn(),

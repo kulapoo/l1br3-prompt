@@ -1,14 +1,15 @@
-import type { AiStatus, GenerateRequest, ProcessTemplateResponse, Prompt, PromptCreate, PromptStats, PromptUpdate, Tag, TransformMode } from '../types'
-
-/** Thrown when the cloud provider returns a quota_exceeded error frame. */
-export class QuotaExceededError extends Error {
-  readonly resetAt: string | null
-  constructor(resetAt: string | null) {
-    super(`Cloud quota exhausted${resetAt ? `, resets at ${resetAt}` : ''}`)
-    this.name = 'QuotaExceededError'
-    this.resetAt = resetAt
-  }
-}
+import type {
+  AiStatus,
+  ByokRequestConfig,
+  GenerateRequest,
+  ProcessTemplateResponse,
+  Prompt,
+  PromptCreate,
+  PromptStats,
+  PromptUpdate,
+  Tag,
+  TransformMode,
+} from "../types"
 
 interface ApiResponse<T> {
   success: boolean
@@ -31,7 +32,7 @@ const PING_TIMEOUT_MS = 2000
 export async function pingBackend(baseUrl: string): Promise<boolean> {
   try {
     const res = await fetch(`${baseUrl}/api/v1/health`, {
-      method: 'GET',
+      method: "GET",
       signal: AbortSignal.timeout(PING_TIMEOUT_MS),
     })
     if (!res.ok) return false
@@ -48,24 +49,24 @@ async function _consumeSSE(
   body: ReadableStream<Uint8Array>,
   onChunk: (chunk: string) => void,
   opts?: {
-    onMeta?: (meta: { provider: 'ollama' | 'cloud' }) => void
+    onMeta?: (meta: { provider: string }) => void
   },
 ): Promise<void> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
-  let buf = ''
+  let buf = ""
 
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
 
     buf += decoder.decode(value, { stream: true })
-    const lines = buf.split('\n')
+    const lines = buf.split("\n")
     // Keep the last potentially-incomplete line in the buffer
-    buf = lines.pop() ?? ''
+    buf = lines.pop() ?? ""
 
     for (const line of lines) {
-      if (!line.startsWith('data: ')) continue
+      if (!line.startsWith("data: ")) continue
       const raw = line.slice(6).trim()
       if (!raw) continue
       try {
@@ -74,19 +75,12 @@ async function _consumeSSE(
           done?: boolean
           error?: string
           meta?: { provider?: string }
-          resetAt?: string
         }
-        if (data.error) {
-          if (data.error === 'quota_exceeded') {
-            throw new QuotaExceededError(data.resetAt ?? null)
-          }
-          throw new Error(data.error)
-        }
+        if (data.error) throw new Error(data.error)
         if (data.done) return
         if (data.chunk) onChunk(data.chunk)
         if (data.meta?.provider && opts?.onMeta) {
-          const provider = data.meta.provider === 'ollama' ? 'ollama' : 'cloud'
-          opts.onMeta({ provider })
+          opts.onMeta({ provider: data.meta.provider })
         }
       } catch (err) {
         if (err instanceof SyntaxError) continue // malformed frame — skip
@@ -98,22 +92,11 @@ async function _consumeSSE(
 
 // ── AI status ─────────────────────────────────────────────────────────────────
 
-export async function fetchAiStatus(
-  baseUrl: string,
-  opts?: { deviceId?: string | null; includeCloud?: boolean },
-): Promise<AiStatus> {
-  const url = new URL(`${baseUrl}/api/v1/ai/status`)
-  if (opts?.includeCloud && opts?.deviceId) {
-    url.searchParams.set('cloud', 'true')
-  }
-
-  const headers: Record<string, string> = {}
-  if (opts?.deviceId) headers['X-Device-Id'] = opts.deviceId
-
-  const res = await fetch(url.toString(), { headers })
+export async function fetchAiStatus(baseUrl: string): Promise<AiStatus> {
+  const res = await fetch(`${baseUrl}/api/v1/ai/status`)
   if (!res.ok) throw new Error(`AI status request failed: ${res.statusText}`)
   const json: ApiResponse<AiStatus> = await res.json()
-  if (!json.success || !json.data) throw new Error(json.error ?? 'Unknown error')
+  if (!json.success || !json.data) throw new Error(json.error ?? "Unknown error")
   return json.data
 }
 
@@ -123,9 +106,8 @@ export async function fetchAiStatus(
  * Stream an AI-generated response via SSE.
  *
  * Calls onChunk for each text fragment and optionally onMeta when the server
- * reports which provider is serving the request. Throws QuotaExceededError on
- * cloud quota exhaustion. Returns when the stream is done or the AbortSignal
- * fires.
+ * reports which provider is serving the request. Returns when the stream is
+ * done or the AbortSignal fires.
  */
 export async function streamGenerate(
   baseUrl: string,
@@ -133,30 +115,22 @@ export async function streamGenerate(
   onChunk: (chunk: string) => void,
   signal?: AbortSignal,
   opts?: {
-    deviceId?: string | null
-    cloudEnabled?: boolean
-    onMeta?: (meta: { provider: 'ollama' | 'cloud' }) => void
+    onMeta?: (meta: { provider: string }) => void
   },
 ): Promise<void> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (opts?.deviceId) headers['X-Device-Id'] = opts.deviceId
-
-  const body: GenerateRequest = {
-    ...request,
-    cloudEnabled: opts?.cloudEnabled ?? false,
-  }
+  const headers: Record<string, string> = { "Content-Type": "application/json" }
 
   const res = await fetch(`${baseUrl}/api/v1/generate`, {
-    method: 'POST',
+    method: "POST",
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify(request),
     signal,
   })
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText)
     throw new Error(`Generate failed (${res.status}): ${text}`)
   }
-  if (!res.body) throw new Error('No response body from generate endpoint')
+  if (!res.body) throw new Error("No response body from generate endpoint")
 
   await _consumeSSE(res.body, onChunk, { onMeta: opts?.onMeta })
 }
@@ -168,39 +142,36 @@ export async function streamGenerate(
  *
  * `modes` is a list of transform-mode ids (built-in slugs and/or custom ids);
  * they are combined into a single meta-prompt on the server. The special id
- * "custom" uses the free-text `instruction`. Throws QuotaExceededError on cloud
- * quota exhaustion.
+ * "custom" uses the free-text `instruction`.
  */
 export async function streamTransform(
   baseUrl: string,
-  body: { prompt: string; modes: string[]; instruction?: string },
+  body: {
+    prompt: string
+    modes: string[]
+    instruction?: string
+    model?: string | null
+    byok?: ByokRequestConfig | null
+  },
   onChunk: (chunk: string) => void,
   signal?: AbortSignal,
   opts?: {
-    deviceId?: string | null
-    cloudEnabled?: boolean
-    onMeta?: (meta: { provider: 'ollama' | 'cloud' }) => void
+    onMeta?: (meta: { provider: string }) => void
   },
 ): Promise<void> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (opts?.deviceId) headers['X-Device-Id'] = opts.deviceId
-
-  const requestBody = {
-    ...body,
-    cloudEnabled: opts?.cloudEnabled ?? false,
-  }
+  const headers: Record<string, string> = { "Content-Type": "application/json" }
 
   const res = await fetch(`${baseUrl}/api/v1/transform`, {
-    method: 'POST',
+    method: "POST",
     headers,
-    body: JSON.stringify(requestBody),
+    body: JSON.stringify(body),
     signal,
   })
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText)
     throw new Error(`Transform failed (${res.status}): ${text}`)
   }
-  if (!res.body) throw new Error('No response body from transform endpoint')
+  if (!res.body) throw new Error("No response body from transform endpoint")
 
   await _consumeSSE(res.body, onChunk, { onMeta: opts?.onMeta })
 }
@@ -211,7 +182,7 @@ export async function fetchTransformModes(baseUrl: string): Promise<TransformMod
   const res = await fetch(`${baseUrl}/api/v1/transform-modes`)
   if (!res.ok) throw new Error(`Transform modes request failed: ${res.statusText}`)
   const json: ApiResponse<TransformMode[]> = await res.json()
-  if (!json.success) throw new Error(json.error ?? 'Unknown error from transform-modes endpoint')
+  if (!json.success) throw new Error(json.error ?? "Unknown error from transform-modes endpoint")
   return json.data ?? []
 }
 
@@ -220,21 +191,21 @@ export async function createTransformMode(
   data: { name: string; instruction: string },
 ): Promise<TransformMode> {
   const res = await fetch(`${baseUrl}/api/v1/transform-modes`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error(`Create transform mode failed: ${res.statusText}`)
   const json: ApiResponse<TransformMode> = await res.json()
-  if (!json.success || !json.data) throw new Error(json.error ?? 'Create transform mode error')
+  if (!json.success || !json.data) throw new Error(json.error ?? "Create transform mode error")
   return json.data
 }
 
 export async function deleteTransformMode(baseUrl: string, id: string): Promise<void> {
-  const res = await fetch(`${baseUrl}/api/v1/transform-modes/${id}`, { method: 'DELETE' })
+  const res = await fetch(`${baseUrl}/api/v1/transform-modes/${id}`, { method: "DELETE" })
   if (!res.ok) throw new Error(`Delete transform mode failed: ${res.statusText}`)
   const json: ApiResponse<null> = await res.json()
-  if (!json.success) throw new Error(json.error ?? 'Delete transform mode error')
+  if (!json.success) throw new Error(json.error ?? "Delete transform mode error")
 }
 
 // ── Prompts ───────────────────────────────────────────────────────────────────
@@ -256,22 +227,19 @@ export interface FetchPromptsResult {
   limit: number
 }
 
-export async function fetchPrompts(
-  baseUrl: string,
-  params?: FetchPromptsParams,
-): Promise<FetchPromptsResult> {
+export async function fetchPrompts(baseUrl: string, params?: FetchPromptsParams): Promise<FetchPromptsResult> {
   const url = new URL(`${baseUrl}/api/v1/prompts`)
-  if (params?.search) url.searchParams.set('search', params.search)
-  if (params?.tag) url.searchParams.set('tag', params.tag)
-  if (params?.category) url.searchParams.set('category', params.category)
-  if (params?.favorite != null) url.searchParams.set('favorite', String(params.favorite))
-  if (params?.page) url.searchParams.set('page', String(params.page))
-  if (params?.limit) url.searchParams.set('limit', String(params.limit))
+  if (params?.search) url.searchParams.set("search", params.search)
+  if (params?.tag) url.searchParams.set("tag", params.tag)
+  if (params?.category) url.searchParams.set("category", params.category)
+  if (params?.favorite != null) url.searchParams.set("favorite", String(params.favorite))
+  if (params?.page) url.searchParams.set("page", String(params.page))
+  if (params?.limit) url.searchParams.set("limit", String(params.limit))
 
   const res = await fetch(url.toString())
   if (!res.ok) throw new Error(`Prompts request failed: ${res.statusText}`)
   const json: ApiResponse<Prompt[]> = await res.json()
-  if (!json.success) throw new Error(json.error ?? 'Unknown error from prompts endpoint')
+  if (!json.success) throw new Error(json.error ?? "Unknown error from prompts endpoint")
 
   const prompts = json.data ?? []
   const tagMap = new Map<string, Tag>()
@@ -289,40 +257,40 @@ export async function fetchPrompts(
 
 export async function createPrompt(baseUrl: string, data: PromptCreate): Promise<Prompt> {
   const res = await fetch(`${baseUrl}/api/v1/prompts`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error(`Create prompt failed: ${res.statusText}`)
   const json: ApiResponse<Prompt> = await res.json()
-  if (!json.success || !json.data) throw new Error(json.error ?? 'Create prompt error')
+  if (!json.success || !json.data) throw new Error(json.error ?? "Create prompt error")
   return json.data
 }
 
 export async function updatePrompt(baseUrl: string, id: string, data: PromptUpdate): Promise<Prompt> {
   const res = await fetch(`${baseUrl}/api/v1/prompts/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   })
   if (!res.ok) throw new Error(`Update prompt failed: ${res.statusText}`)
   const json: ApiResponse<Prompt> = await res.json()
-  if (!json.success || !json.data) throw new Error(json.error ?? 'Update prompt error')
+  if (!json.success || !json.data) throw new Error(json.error ?? "Update prompt error")
   return json.data
 }
 
 export async function deletePrompt(baseUrl: string, id: string): Promise<void> {
-  const res = await fetch(`${baseUrl}/api/v1/prompts/${id}`, { method: 'DELETE' })
+  const res = await fetch(`${baseUrl}/api/v1/prompts/${id}`, { method: "DELETE" })
   if (!res.ok) throw new Error(`Delete prompt failed: ${res.statusText}`)
   const json: ApiResponse<null> = await res.json()
-  if (!json.success) throw new Error(json.error ?? 'Delete prompt error')
+  if (!json.success) throw new Error(json.error ?? "Delete prompt error")
 }
 
 export async function recordCopy(baseUrl: string, id: string): Promise<Prompt> {
-  const res = await fetch(`${baseUrl}/api/v1/prompts/${id}/copy`, { method: 'POST' })
+  const res = await fetch(`${baseUrl}/api/v1/prompts/${id}/copy`, { method: "POST" })
   if (!res.ok) throw new Error(`Record copy failed: ${res.statusText}`)
   const json: ApiResponse<Prompt> = await res.json()
-  if (!json.success || !json.data) throw new Error(json.error ?? 'Record copy error')
+  if (!json.success || !json.data) throw new Error(json.error ?? "Record copy error")
   return json.data
 }
 
@@ -330,7 +298,7 @@ export async function fetchPromptStats(baseUrl: string): Promise<PromptStats> {
   const res = await fetch(`${baseUrl}/api/v1/prompts/stats`)
   if (!res.ok) throw new Error(`Stats request failed: ${res.statusText}`)
   const json: ApiResponse<PromptStats> = await res.json()
-  if (!json.success || !json.data) throw new Error(json.error ?? 'Stats endpoint error')
+  if (!json.success || !json.data) throw new Error(json.error ?? "Stats endpoint error")
   return json.data
 }
 
@@ -340,7 +308,7 @@ export async function fetchCategories(baseUrl: string): Promise<string[]> {
   const res = await fetch(`${baseUrl}/api/v1/categories`)
   if (!res.ok) throw new Error(`Categories request failed: ${res.statusText}`)
   const json: ApiResponse<string[]> = await res.json()
-  if (!json.success) throw new Error(json.error ?? 'Unknown error from categories endpoint')
+  if (!json.success) throw new Error(json.error ?? "Unknown error from categories endpoint")
   return json.data ?? []
 }
 
@@ -355,30 +323,26 @@ export async function callApiSource(
 ): Promise<string> {
   const res = await fetch(url, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(MODIFIER_TIMEOUT_MS),
   })
   if (!res.ok) throw new Error(`API source request failed (${res.status}): ${res.statusText}`)
   const json = (await res.json()) as ApiResponse<{ rendered: string }>
-  if (!json.success || !json.data) throw new Error(json.error ?? 'API source error')
+  if (!json.success || !json.data) throw new Error(json.error ?? "API source error")
   return json.data.rendered
 }
 
-export async function callMcpTool(
-  baseUrl: string,
-  toolName: string,
-  args: Record<string, unknown>,
-): Promise<string> {
+export async function callMcpTool(baseUrl: string, toolName: string, args: Record<string, unknown>): Promise<string> {
   const res = await fetch(`${baseUrl}/api/v1/mcp/call`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ tool: toolName, args }),
     signal: AbortSignal.timeout(MODIFIER_TIMEOUT_MS),
   })
   if (!res.ok) throw new Error(`MCP call failed (${res.status}): ${res.statusText}`)
   const json = (await res.json()) as ApiResponse<{ result: string }>
-  if (!json.success || !json.data) throw new Error(json.error ?? 'MCP tool error')
+  if (!json.success || !json.data) throw new Error(json.error ?? "MCP tool error")
   return json.data.result
 }
 
@@ -390,12 +354,12 @@ export async function processTemplate(
   variables: Record<string, string>,
 ): Promise<ProcessTemplateResponse> {
   const res = await fetch(`${baseUrl}/api/v1/process-template`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ template, variables }),
   })
   if (!res.ok) throw new Error(`Template processing failed: ${res.statusText}`)
   const json: ApiResponse<ProcessTemplateResponse> = await res.json()
-  if (!json.success || !json.data) throw new Error(json.error ?? 'Template error')
+  if (!json.success || !json.data) throw new Error(json.error ?? "Template error")
   return json.data
 }

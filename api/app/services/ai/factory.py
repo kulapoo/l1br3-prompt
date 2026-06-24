@@ -3,7 +3,6 @@ from fastapi import Request
 
 from app.schemas.ai import ByokProviderConfig
 from app.services.ai.anthropic_provider import AnthropicProvider
-from app.services.ai.cloud import CloudFallbackProvider
 from app.services.ai.ollama import OllamaProvider
 from app.services.ai.openai_provider import OpenAIProvider
 from app.services.ai.provider import AIProvider, ProviderError, ProviderStatus
@@ -12,8 +11,6 @@ from app.services.ai.provider import AIProvider, ProviderError, ProviderStatus
 async def resolve_provider(
     request: Request,
     *,
-    cloud_enabled: bool,
-    device_id: str | None,
     byok: ByokProviderConfig | None = None,
 ) -> tuple[AIProvider, str, ProviderStatus]:
     """
@@ -22,13 +19,12 @@ async def resolve_provider(
     Resolution order:
       1. BYOK provider — if ``byok`` is supplied, it is the explicit user choice and
          MUST be used. Health-check it and fail loudly if unreachable (do NOT silently
-         downgrade to Ollama/Cloud — an explicit BYOK request deserves a clear error).
+         downgrade to Ollama — an explicit BYOK request deserves a clear error).
       2. OllamaProvider — if reachable locally.
-      3. CloudFallbackProvider — if cloud_enabled=True and a device_id is present.
-      4. Raise ProviderError — if neither is available.
+      3. Raise ProviderError — if neither is available.
 
-    Returns a tuple of (provider, label, status) where label is "byok:{type}", "ollama",
-    or "cloud", and status is the ProviderStatus from the successful health check
+    Returns a tuple of (provider, label, status) where label is "byok:{type}" or
+    "ollama", and status is the ProviderStatus from the successful health check
     (avoids a second health() call in the route layer for model resolution).
     """
     http = request.app.state.http
@@ -48,15 +44,7 @@ async def resolve_provider(
     if ollama_status.reachable:
         return ollama, "ollama", ollama_status
 
-    if cloud_enabled and device_id:
-        cloud = CloudFallbackProvider(http, device_id)
-        cloud_status = await cloud.health()
-        if cloud_status.reachable:
-            return cloud, "cloud", cloud_status
-
-    raise ProviderError(
-        "No AI provider available. Install Ollama (https://ollama.com) or enable Cloud AI Fallback in Settings."
-    )
+    raise ProviderError("No AI provider available. Install Ollama (https://ollama.com) or configure a BYOK provider.")
 
 
 def _byok_provider(http: httpx.AsyncClient, byok: ByokProviderConfig) -> tuple[AIProvider, str]:

@@ -5,8 +5,7 @@
 | Tool | Version | Notes |
 |------|---------|-------|
 | Python | 3.12+ | With [UV](https://docs.astral.sh/uv/) for dependency management |
-| Node.js | 20+ | With npm (browser extension) |
-| pnpm | latest | Cloudflare Worker only (`workers/cloud-ai`) |
+| Node.js | 20+ | With pnpm (browser extension) |
 | just | latest | Task runner — [just.systems](https://just.systems) |
 | pre-commit | latest | Optional but recommended |
 | Ollama | latest | Optional — for local AI features |
@@ -29,9 +28,8 @@ Then load the unpacked extension in Chrome from `browser-ext/.output/chrome-mv3-
 | `just dev-api` | API only (FastAPI on localhost:8000) |
 | `just dev-ext` | Chrome extension (WXT) |
 | `just dev-ext-ff` | Firefox extension (WXT) |
-| `just test` | All tests (API + worker) |
+| `just test` | All tests (API + extension) |
 | `just test-api` | pytest suite |
-| `just test-worker` | Cloudflare Worker (vitest) |
 | `just lint` | Typecheck extension + lint API |
 | `just format` | Prettier (extension) + Ruff (API) |
 | `just build` | Build API + Chrome extension |
@@ -98,9 +96,8 @@ Additional commands:
 
 ## Testing
 
-- **API**: `just test-api` — pytest with 73+ tests covering routes, services, and repositories
-- **Worker**: `just test-worker` — vitest for the Cloudflare Worker
-- **Extension**: `just lint-ext` — TypeScript type checking (no runtime test suite yet)
+- **API**: `just test-api` — pytest covering routes, services, and repositories
+- **Extension**: `just test-ext` — vitest (jsdom)
 
 ## Code Style
 

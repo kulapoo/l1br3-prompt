@@ -13,7 +13,6 @@ Three independently-versioned packages. Do not cross-wire tooling:
 |---|---|---|---|
 | `api/` | **uv** (Python 3.12+) | `uv run ...` | `app.main:app`, binds `127.0.0.1:8000` only |
 | `browser-ext/` | **pnpm** (`pnpm-lock.yaml` is the lockfile of record) | see below | WXT entrypoints in `entrypoints/` |
-| `workers/cloud-ai/` | **pnpm** | `pnpm ...` | Cloudflare Worker, `src/index.ts` |
 
 **browser-ext gotcha:** `pnpm-lock.yaml` is committed, but the Justfile drives
 dev/build/install through `npm`. To stay consistent, use **pnpm** for installs
@@ -24,7 +23,7 @@ they read the same `package.json`. WXT entrypoints: `sidepanel`, `background`,
 ## Commands (`just` from repo root)
 
 - `just dev` — API + extension concurrently. `just dev-api` / `just dev-ext` / `just dev-ext-ff` for one.
-- `just test` — runs all three suites. Subcommands: `test-api`, `test-worker`, `test-ext`.
+- `just test` — runs both suites. Subcommands: `test-api`, `test-ext`.
 - `just lint` — **see warning below**, not a full check.
 - `just format` — Prettier (ext) + Ruff format (api).
 - `just build` — API via PyInstaller (`api/build.sh` → `dist/l1br3`) + Chrome ext. Firefox: `just build-ext-ff`.
@@ -43,7 +42,6 @@ Focused test runs:
 - API one test: `cd api && uv run pytest tests/test_prompts.py -k test_name`
 - API one file: `cd api && uv run pytest tests/test_transform.py`
 - Ext: `cd browser-ext && pnpm test -t "name"` (vitest, jsdom, setup in `tests/setup.ts`)
-- Worker: `cd workers/cloud-ai && pnpm test` (Miniflare; providers mocked via `vi.stubGlobal('fetch')`, no real keys)
 
 ## Database & migrations (api/)
 
@@ -60,11 +58,6 @@ Focused test runs:
 | `L1BR3_TESTING=1` | Skip auto-migrations (set automatically by conftest) |
 | `L1BR3_DB_PATH` | SQLite location (default `~/.l1br3/l1br3.db`) |
 | `L1BR3_SQL_ECHO=1` | Log all SQL from the engine |
-| `L1BR3_CLOUD_AI_URL` | Point API at your Cloudflare Worker (default may not exist yet — see `workers/cloud-ai/README.md`) |
-
-Worker secrets (`GROQ_API_KEY`, `GEMINI_API_KEY`) are set via `wrangler secret put`,
-never in `wrangler.toml`. The committed `wrangler.toml` has **placeholder KV
-namespace IDs** — replace after `wrangler kv namespace create` before deploy.
 
 ## API wire conventions
 

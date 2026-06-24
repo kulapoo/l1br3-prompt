@@ -19,18 +19,12 @@ export async function saveConfig(config: AppConfig): Promise<void> {
     backend: config.backend,
     ai: {
       localConnected: config.ai.localConnected,
-      cloudEnabled: config.ai.cloudEnabled,
-      cloudQuotaRemaining: config.ai.cloudQuotaRemaining,
-      cloudQuotaTotal: config.ai.cloudQuotaTotal,
-      cloudQuotaResetAt: config.ai.cloudQuotaResetAt,
       selectedModel: config.ai.selectedModel,
       availableModels: config.ai.availableModels,
-      deviceId: config.ai.deviceId,
       providers: config.ai.providers,
       assignments: config.ai.assignments,
       // activeProvider is session-only — reset to null on reload
     },
-    sync: config.sync,
     quickActions: config.quickActions,
     viewMode: config.viewMode,
   }
@@ -121,7 +115,6 @@ export async function loadConfig(defaults: AppConfig): Promise<AppConfig> {
     ...saved,
     backend: { ...defaults.backend, ...saved.backend },
     ai: { ...defaults.ai, ...saved.ai },
-    sync: { ...defaults.sync, ...saved.sync },
     quickActions: saved.quickActions ?? defaults.quickActions,
   }
 }

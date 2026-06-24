@@ -1,30 +1,22 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   PenLine,
   Settings,
-  TerminalSquare,
-  AlertTriangle } from
+  TerminalSquare } from
 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PromptsTab } from './PromptsTab';
 import { ComposeTab } from './ComposeTab';
 import { SettingsTab } from './SettingsTab';
 import { StatusBar } from './StatusBar';
-import { ConflictDialog } from './ConflictDialog';
 import { useBackendHealth } from '../hooks/useBackendHealth';
-import { useCloudQuota } from '../hooks/useCloudQuota';
-import { useConflicts } from '../hooks/useConflicts';
 import { useAppConfig } from '../contexts/AppConfig';
 
 export function Sidebar() {
   // Live-detect the local backend so config.backend.isInstalled reflects
   // reality rather than a stored toggle.
   useBackendHealth();
-  // Background quota polling for cloud AI fallback.
-  useCloudQuota();
   const { activeTab, setActiveTab } = useAppConfig();
-  const { count: conflictCount } = useConflicts();
-  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
   const tabs = [
   {
     id: 'compose',
@@ -55,21 +47,8 @@ export function Sidebar() {
               l1br3-prompt
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            {conflictCount > 0 && (
-              <button
-                onClick={() => setConflictDialogOpen(true)}
-                title={`${conflictCount} sync conflict${conflictCount === 1 ? '' : 's'}`}
-                aria-label={`${conflictCount} sync conflict${conflictCount === 1 ? '' : 's'}`}
-                className="flex items-center gap-1 px-1.5 h-6 rounded-md bg-amber-950/60 border border-amber-700/60 text-amber-300 hover:bg-amber-900/60 transition-colors text-[10px] font-medium"
-              >
-                <AlertTriangle size={12} />
-                {conflictCount}
-              </button>
-            )}
-            <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-medium text-slate-400 cursor-pointer hover:bg-slate-700 transition-colors">
-              U
-            </div>
+          <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-medium text-slate-400 cursor-pointer hover:bg-slate-700 transition-colors">
+            U
           </div>
         </div>
 
@@ -139,10 +118,6 @@ export function Sidebar() {
 
       {/* Status Bar */}
       <StatusBar />
-
-      <ConflictDialog
-        open={conflictDialogOpen}
-        onClose={() => setConflictDialogOpen(false)} />
 
     </div>);
 

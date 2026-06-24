@@ -50,7 +50,6 @@ export function ModelsManager() {
           return;
         }
       }
-      if (ai.cloudEnabled) next[role] = { providerId: 'cloud', model: 'cloud-default' };
     };
     pick('chat');
     pick('transform');
@@ -99,26 +98,7 @@ export function ModelsManager() {
     }, 350);
   };
 
-  // ── Cloud quota display (for the Free Cloud card) ────────────────────────
-  const cloudExtra = (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] text-slate-400">
-          {ai.cloudQuotaRemaining}/{ai.cloudQuotaTotal} requests remaining today
-        </p>
-        <div className="w-24 h-1 bg-slate-800 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-amber-500 rounded-full transition-all"
-            style={{
-              width: `${Math.max(0, (ai.cloudQuotaRemaining / Math.max(ai.cloudQuotaTotal, 1)) * 100)}%`,
-            }}
-          />
-        </div>
-      </div>
-      <p className="text-[10px] text-slate-600">No key needed · anonymous quota</p>
-    </div>
-  );
-
+  // ── Ollama hint ───────────────────────────────────────────────────────────
   const ollamaExtra =
     ai.availableModels.length === 0 ? (
       <p className="text-[11px] text-amber-500/80">
@@ -156,7 +136,6 @@ export function ModelsManager() {
           assignments={assignments}
           providers={providers}
           ollamaModels={ai.availableModels}
-          cloudEnabled={ai.cloudEnabled}
           onChange={setAssignment}
           onAutoAssign={autoAssign}
         />
@@ -166,8 +145,7 @@ export function ModelsManager() {
           <div>
             <h3 className="text-sm font-semibold text-slate-100">Provider Configuration</h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Add API keys for the providers you want to use. Local and free cloud providers are
-              included automatically.
+              Add API keys for the providers you want to use. Local Ollama is included automatically.
             </p>
           </div>
 
@@ -175,23 +153,19 @@ export function ModelsManager() {
             {PROVIDER_ORDER.map((type) => {
               const meta = PROVIDER_META[type];
 
-              // Fixed providers (ollama / cloud)
+              // Fixed provider (ollama)
               if (meta.fixed) {
-                const enabled =
-                  type === 'ollama' ? ai.localConnected : ai.cloudEnabled;
                 return (
                   <ProviderCard
                     key={type}
                     meta={meta}
-                    configured={enabled}
-                    enabled={enabled}
-                    models={type === 'ollama' ? ai.availableModels : ['cloud-default']}
+                    configured={ai.localConnected}
+                    enabled={ai.localConnected}
+                    models={ai.availableModels}
                     capabilities={['language']}
                     fixed
-                    extra={type === 'cloud' ? cloudExtra : ollamaExtra}
-                    onToggle={(v) =>
-                      updateAi(type === 'ollama' ? { localConnected: v } : { cloudEnabled: v })
-                    }
+                    extra={ollamaExtra}
+                    onToggle={(v) => updateAi({ localConnected: v })}
                   />
                 );
               }

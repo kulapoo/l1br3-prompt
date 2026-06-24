@@ -20,22 +20,12 @@ function makeConfig(overrides: Partial<AppConfig['ai']> = {}): AppConfig {
     backend: { isInstalled: true, url: 'http://localhost:8000' },
     ai: {
       localConnected: true,
-      cloudEnabled: false,
-      cloudQuotaRemaining: 50,
-      cloudQuotaTotal: 50,
-      cloudQuotaResetAt: null,
       activeProvider: null,
       selectedModel: null,
       availableModels: ['llama3:8b'],
-      deviceId: null,
       providers: [],
       assignments: { chat: null, transform: null },
       ...overrides,
-    },
-    sync: {
-      enabled: false, supabaseUrl: '', supabaseAnonKey: '', userId: null,
-      accessToken: null, refreshToken: null, lastSyncTime: null,
-      syncStatus: 'idle', syncError: null, realtimeStatus: 'idle', realtimeError: null,
     },
     viewMode: 'admin',
     quickActions: [],
@@ -54,7 +44,6 @@ function renderManager(config: AppConfig) {
     updateAi,
     updateConfig: vi.fn(),
     setConfig: vi.fn(),
-    updateSync: vi.fn(),
     activeTab: 'compose',
     setActiveTab: vi.fn(),
     editingPrompt: null as Prompt | null,
@@ -71,10 +60,9 @@ describe('ModelsManager', () => {
     expect(screen.getByText('Provider Configuration')).toBeInTheDocument()
   })
 
-  it('shows the fixed Ollama and Free Cloud cards plus 3 addable empty cards', () => {
+  it('shows the fixed Ollama card plus 3 addable empty cards', () => {
     renderManager(makeConfig())
     expect(screen.getByText('Ollama (Local)')).toBeInTheDocument()
-    expect(screen.getByText('Free Cloud (Groq / Gemini)')).toBeInTheDocument()
     // Three BYOK provider types with no config -> each offers Add Configuration.
     expect(screen.getAllByRole('button', { name: /add configuration/i })).toHaveLength(3)
   })

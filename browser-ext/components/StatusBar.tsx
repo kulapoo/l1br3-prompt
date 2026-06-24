@@ -1,5 +1,5 @@
 import React from 'react';
-import { Server, CloudOff, Cloud, Zap, ZapOff } from 'lucide-react';
+import { Server, Zap, ZapOff } from 'lucide-react';
 import { useAppConfig } from '../contexts/AppConfig';
 
 export function StatusBar() {
@@ -21,51 +21,29 @@ export function StatusBar() {
           <Server size={10} />{' '}
           {config.backend.isInstalled ? 'Local' : 'Offline'}
         </div>
-
-        <div
-        className={`flex items-center gap-1.5 ${config.sync.enabled && config.sync.userId !== null ? 'text-blue-400' : 'opacity-60'}`}
-        title="Cloud Sync Status">
-
-          {config.sync.enabled && config.sync.userId !== null ?
-        <Cloud size={10} /> :
-
-        <CloudOff size={10} />
-        }
-          {config.sync.enabled && config.sync.userId !== null ?
-        (config.sync.syncStatus === 'syncing' ? 'Syncing…' : 'Synced') :
-        'No Sync'}
-        </div>
       </div>
 
       <div
       className={`flex items-center gap-1.5 ${
-        config.ai.activeProvider === 'cloud'
-          ? 'text-amber-400'
-          : config.ai.localConnected || config.ai.cloudEnabled
+        config.ai.activeProvider === 'ollama'
+          ? 'text-indigo-400'
+          : config.ai.localConnected
             ? 'text-indigo-400'
             : 'text-slate-500'
       }`}
       title={
         config.ai.activeProvider === 'ollama'
           ? 'Using local Ollama'
-          : config.ai.activeProvider === 'cloud'
-            ? 'Using cloud AI fallback (Groq/Gemini)'
-            : config.ai.localConnected
-              ? 'Ollama ready'
-              : config.ai.cloudEnabled
-                ? 'Cloud AI fallback enabled'
-                : 'No AI provider available'
+          : config.ai.localConnected
+            ? 'Ollama ready'
+            : 'No AI provider available'
       }>
-        {config.ai.localConnected || config.ai.cloudEnabled ? <Zap size={10} /> : <ZapOff size={10} />}
+        {config.ai.localConnected ? <Zap size={10} /> : <ZapOff size={10} />}
         {config.ai.activeProvider === 'ollama'
           ? 'Ollama'
-          : config.ai.activeProvider === 'cloud'
-            ? 'Cloud AI'
-            : config.ai.localConnected
-              ? 'Ollama Ready'
-              : config.ai.cloudEnabled
-                ? 'Cloud AI Ready'
-                : 'AI Offline'}
+          : config.ai.localConnected
+            ? 'Ollama Ready'
+            : 'AI Offline'}
       </div>
     </div>;
 

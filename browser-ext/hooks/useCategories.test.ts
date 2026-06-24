@@ -20,15 +20,10 @@ import { useCategories } from './useCategories'
 const mockConfig: AppConfig = {
   backend: { isInstalled: true, url: 'http://localhost:8000' },
   ai: {
-    localConnected: false, cloudEnabled: false, cloudQuotaRemaining: 0,
-    cloudQuotaTotal: 0, cloudQuotaResetAt: null, activeProvider: null,
-    selectedModel: null, availableModels: [], deviceId: null,
+    localConnected: false,
+    activeProvider: null,
+    selectedModel: null, availableModels: [],
     providers: [], assignments: { chat: null, transform: null },
-  },
-  sync: {
-    enabled: false, supabaseUrl: '', supabaseAnonKey: '', userId: null,
-    accessToken: null, refreshToken: null, lastSyncTime: null,
-    syncStatus: 'idle', syncError: null, realtimeStatus: 'idle', realtimeError: null,
   },
   viewMode: 'sidebar',
   quickActions: [],
@@ -38,7 +33,6 @@ const baseCtx = {
   config: mockConfig,
   updateConfig: vi.fn(),
   setConfig: vi.fn(),
-  updateSync: vi.fn(),
   updateAi: vi.fn(),
   activeTab: 'compose' as const,
   setActiveTab: vi.fn(),

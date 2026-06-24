@@ -93,20 +93,16 @@ async def transform(request: Request, req: TransformRequest, db: Session = Depen
     """
     Stream an AI-transformed version of the given prompt as Server-Sent Events.
 
-    Resolution order: Ollama (local) → Cloud Fallback (if cloudEnabled=true).
+    Resolution order: BYOK (explicit) → Ollama (local).
 
     Each event: `data: {"chunk": "..."}\\n\\n`
-    Meta event:  `data: {"meta": {"provider": "ollama|cloud"}}\\n\\n`
+    Meta event:  `data: {"meta": {"provider": "ollama|byok:*"}}\\n\\n`
     Final event: `data: {"done": true}\\n\\n`
     On error:   `data: {"error": "..."}\\n\\n`
     """
-    device_id = request.headers.get("x-device-id")
-
     try:
         provider, label, provider_status = await resolve_provider(
             request,
-            cloud_enabled=req.cloud_enabled,
-            device_id=device_id,
             byok=req.byok,
         )
     except ProviderError as exc:

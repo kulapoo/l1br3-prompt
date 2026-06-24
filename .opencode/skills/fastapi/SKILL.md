@@ -27,7 +27,7 @@ backend/
 │ ├── router.py # Aggregates all endpoint routers
 │ ├── prompts.py # Prompt CRUD endpoints
 │ ├── suggestions.py # AI suggestion endpoints
-│ └── sync.py # Cloud sync endpoints
+│ └── transform.py # Transform (AI rewriting) endpoints
 ├── core/
 │ ├── security.py # Encryption, localhost checks
 │ └── exceptions.py # Custom exception classes

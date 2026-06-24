@@ -5,8 +5,26 @@
 > PRDs reference it by `Epic` + `Feature` ID; when a PRD lands or a feature ships,
 > tick the matching box and update the Status Summary table below.
 >
-> Source of truth for completion data: `docs/sprint_plan_current.md`.
-> Requirements source of truth: **this file**.
+> This file is the **single source of truth** for requirements and completion data.
+
+## Table of Contents
+
+- [How to use this doc](#how-to-use-this-doc)
+- [Legend](#legend)
+- [Status Summary](#status-summary)
+- [Versioning & Releases](#versioning--releases)
+- [Contributing](#contributing)
+- [Project Health](#project-health)
+- [Non-Goals](#non-goals)
+- [EPIC-1 — Local Backend Foundation](#epic-1--local-backend-foundation--) _✅_
+- [EPIC-2 — Sidebar UI (MVP Core)](#epic-2--sidebar-ui-mvp-core--) _✅_
+- [EPIC-3 — Transform (AI Prompt Rewriting)](#epic-3--transform-ai-prompt-rewriting--) _✅_
+- [EPIC-4 — Local AI Integration (Ollama)](#epic-4--local-ai-integration-ollama--) _✅_
+- [EPIC-5 — Multi-Provider Models Manager](#epic-5--multi-provider-models-manager---)
+- [EPIC-6 — Pluggable Database Store](#epic-6--pluggable-database-store---)
+- [PRD Backlog](#prd-backlog-next-candidates)
+- [Dependency Graph](#dependency-graph)
+- [Definition of Done](#definition-of-done-per-feature)
 
 ## How to use this doc
 
@@ -28,12 +46,16 @@
 
 | Mark | Meaning |
 |------|---------|
-| ✅ | Done — meets acceptance criteria, tests green |
+| ✅ | Done — meets acceptance criteria, tests green (100%) |
 | 🔵 | In Progress — some work shipped, more pending |
 | ⚪ | Not Started |
 | ⛔ | Superseded — replaced by a later feature (kept for history) |
 
 Complexity: **Low** / **Medium** / **High**
+
+> Per-feature status is tracked two complementary ways: the EPIC row uses an emoji
+> mark above; individual features use `- [ ]` / `- [x]` checkboxes (and `⛔` when
+> superseded). They should agree — update both when a feature ships.
 
 ---
 
@@ -45,10 +67,88 @@ Complexity: **Low** / **Medium** / **High**
 | EPIC-2 | Sidebar UI (MVP Core) | ✅ | 100% |
 | EPIC-3 | Transform (AI Prompt Rewriting) | ✅ | 100% |
 | EPIC-4 | Local AI Integration (Ollama) | ✅ | 100% |
-| EPIC-5 | Optional Cloud Sync (Supabase) | 🔵 | ~85% |
-| EPIC-6 | Free Cloud AI Fallback | ✅ | ~95% |
-| EPIC-7 | Multi-Provider Models Manager | 🔵 | ~40% |
-| EPIC-8 | Pluggable Database Store | ⚪ | 0% |
+| EPIC-5 | Multi-Provider Models Manager | 🔵 | ~40% |
+| EPIC-6 | Pluggable Database Store | ⚪ | 0% |
+
+---
+
+## Versioning & Releases
+
+l1br3-prompt follows [Semantic Versioning](https://semver.org/). While the project
+is in `0.x` (pre-1.0),minor versions may carry breaking changes; the rules tighten
+at `1.0.0`.
+
+| Milestone | Scope | Status |
+|-----------|-------|--------|
+| `v0.1` | Local-first MVP — EPICs 1–4 (backend, sidebar, transform, Ollama) | ✅ Shipped |
+| `v0.2` | Provider breadth — EPIC-5 (Multi-Provider Models Manager) | 🔵 Frontend slice shipped |
+| `v0.3` | Data portability — EPIC-6 (Pluggable Database Store) | ⚪ Planned |
+
+No firm calendar dates — the project ships when acceptance criteria are met and
+`/verify` passes. Watch [Releases](../../releases) for tagged builds.
+
+---
+
+## Contributing
+
+Contributions are welcome. The project uses a gated, plan-driven workflow:
+
+1. **Find work** — pick a pending `[ ]` item from an EPIC below, or from the
+   [PRD Backlog](#prd-backlog-next-candidates).
+2. **Plan first** — run `/plan-prd "<idea>"` to draft a PRD at `docs/prds/`, then
+   `/plan` to produce an implementation plan. Wait for maintainer confirmation
+   before writing code.
+3. **TDD** — follow the RED-GREEN-REFACTOR cycle (see
+   [common/testing.md](../.opencode/rules/common/testing.md)).
+4. **Verify** — `just test` (both suites), `just lint`, and
+   `pre-commit run --all-files` must all pass before review.
+5. **Commit** — Conventional Commit format (`feat(api):`, `fix(ext):`, …) is
+   enforced by a `commit-msg` hook.
+
+> **Note:** A standalone `CONTRIBUTING.md` does not yet exist; this section is the
+> canonical contributor guide in the meantime. TODO: extract it.
+
+Useful commands (run from repo root, requires [just](https://just.systems/)):
+
+| Command | Description |
+|---|---|
+| `just install` | Install all dependencies (uv + pnpm) |
+| `just dev` | Run API + extension dev server concurrently |
+| `just test` | Run both test suites (api, ext) |
+| `just lint` | `tsc --noEmit` (ext) + `ruff check` (api) |
+| `just format` | Prettier (ext) + Ruff format (api) |
+| `just build` | Build API (PyInstaller) + Chrome extension |
+
+---
+
+## Project Health
+
+> Maintainers: refresh these numbers periodically.
+
+| Metric | Value | Last updated |
+|--------|-------|--------------|
+| Test suites | 2 (api / ext) | — |
+| API test count | _TBD_ | — |
+| Extension test count | _TBD_ | — |
+| Latest release | _none yet (pre-1.0)_ | — |
+| License | [MIT](../LICENSE) | — |
+
+---
+
+## Non-Goals
+
+To keep scope focused and contributor expectations clear, the following are
+**explicitly out of scope** for l1br3-prompt:
+
+- **No telemetry.** The browser extension and local backend do not phone home.
+- **No account required.** The core loop (CRUD, search, transform, local AI)
+  works fully offline with no signup.
+- **No public server.** The FastAPI backend binds `127.0.0.1` only — never
+  exposed publicly. Do not deploy it behind a reverse proxy without auth hardening.
+- **No mobile / native desktop shell.** The product is a browser extension
+  sidebar (Chrome + Firefox). A standalone desktop app is not planned.
+- **No proprietary model hosting.** AI inference runs on the user's local Ollama
+  or their own BYOK provider keys. We do not host or re-sell model access.
 
 ---
 
@@ -102,7 +202,7 @@ admin/dashboard mode. *Glue between existing UI and backend.*
   Last-fetched prompts cached in `browser.storage.local`, loaded when backend offline
   with banner; invalidated on CRUD. (ACs met by F1/F2/F7; dead cache helpers removed.)
   *PRD: —*
-- [x] **F11 — Admin / Dashboard view mode** · *Medium*
+- [x] **F9 — Admin / Dashboard view mode** · *Medium*
   `GET /api/v1/prompts/stats`, `usePromptStats` hook + cache, `AnalyticsPanel`,
   `AdminLayout` tabbed right column, dedicated `entrypoints/admin/` page, Settings
   "Open Admin Mode" → background `OPEN_ADMIN` → new tab; `viewMode` persisted.
@@ -115,11 +215,11 @@ admin/dashboard mode. *Glue between existing UI and backend.*
 One-shot AI prompt rewriting built into the Compose tab. Streamed, combinable modes,
 saved custom modes, selection-aware. Replaces the standalone Enhance tab.
 
-- [x] **F13 — Enhance tab (standalone)** · *Medium* · depends on F6, EPIC-6 · ⛔ **Superseded by F14**
-  Backend `/enhance` SSE + `EnhanceTab`. Removed in F14; the capability migrated into
+- [x] **F11 — Enhance tab (standalone)** · *Medium* · depends on F6 · ⛔ **Superseded by F12**
+  Backend `/enhance` SSE + `EnhanceTab`. Removed in F12; the capability migrated into
   Compose as Transform. *Kept for history.*
   *PRD: —*
-- [x] **F14 — Transform refactor: migrate Enhance into Compose** · *High* · depends on F13, EPIC-6
+- [x] **F12 — Transform refactor: migrate Enhance into Compose** · *High* · depends on F11
   Enhance→Transform rename across BE/FE/schema. `POST /api/v1/transform` SSE (combined
   modes → single meta-prompt) + `/transform-modes` CRUD + migration `003_transform_modes`.
   In-Compose `TransformPanel`: multi-select chips, saved custom modes, selection-aware
@@ -134,7 +234,7 @@ Auto-detect Ollama, Jinja2 template processing, MCP server, streaming to sidebar
 
 - [x] Ollama detection + `/generate` SSE streaming
 - [x] Jinja2 `/process-template`
-- [x] **F12 — API/MCP modifier sources** · *High*
+- [x] **F10 — API/MCP modifier sources** · *High*
   `api`/`mcp` modifier sources wired in ComposeTab, backend `/mcp/call` route
   (read-only; writes gated on `L1BR3_MCP_ALLOW_WRITE`), graceful static-text fallback
   + amber error banners.
@@ -142,77 +242,45 @@ Auto-detect Ollama, Jinja2 template processing, MCP server, streaming to sidebar
 
 ---
 
-## EPIC-5 — Optional Cloud Sync (Supabase)  🔵  (~85%)
-
-Supabase project, auth UI, background sync, conflict resolution, Realtime push.
-
-- [x] **F9 — Supabase Realtime sync** · *High*
-  WebSocket push + 30-min fallback alarm, LWW merge, echo suppression, event buffering,
-  realtime status indicators. *PRD: —*
-- [x] **F10 — Sync conflict-resolution UI** · *High*
-  Watermark-based conflict detection (`conflicts.ts`, `decideAction`, `enqueueConflict`),
-  `ConflictDialog` side-by-side diff (keep/accept/manual-merge), `useConflicts` hook,
-  amber Sidebar badge. *PRD: —*
-- [ ] **F16 — Phase 5 remainder (scope via PRD)** · *TBD*
-  Remaining ~15%. Candidate areas (confirm in PRD before building): optional E2E
-  encryption of sync payloads with a user-controlled key; mobile/desktop surface readiness;
-  sync enable/disable lifecycle polish. *PRD: —*
-
----
-
-## EPIC-6 — Free Cloud AI Fallback  ✅  (~95%)
-
-Cloudflare Worker → Groq/Gemini. Extension settings, rate limiting + quota management,
-privacy-first proxy (logs counters only).
-
-- [x] Worker proxy to Groq/Gemini free tiers
-- [x] Extension cloud-AI settings (opt-in, off by default)
-- [x] Rate limiting (50 req/day/user enforced at the worker)
-- [ ] **F17 — Phase 6 remainder (scope via PRD)** · *TBD*
-  Remaining ~5%. Candidate areas (confirm in PRD): quota/usage UX visibility, fallback
-  telemetry hardening. *PRD: —*
-
----
-
-## EPIC-7 — Multi-Provider Models Manager  🔵  (~40%)
+## EPIC-5 — Multi-Provider Models Manager  🔵  (~40%)
 
 Bring-your-own-key providers (OpenAI, Anthropic, OpenAI-compatible) alongside Local
-(Ollama) and Free Cloud, with per-purpose Default Model Assignments. **Frontend slice
-shipped; backend provider wiring + encrypted key storage pending.**
+(Ollama), with per-purpose Default Model Assignments. **Frontend slice shipped;
+backend provider wiring + encrypted key storage pending.**
 
-- [x] **F15 — AI Models Manager (frontend)** · *High* · depends on F14, EPIC-4, EPIC-6
+- [x] **F13 — AI Models Manager (frontend)** · *High* · depends on F12, EPIC-4
   Admin "Models" view: provider cards + per-purpose Default Model Assignments
   (Chat = `/generate`, Transformation = `/transform`); Test/Models/Edit/Delete; removable
   model pills; Auto-assign; missing-required-model warning. Config in `AppConfig.ai`
   (`providers`, `assignments`), keys in `browser.storage.local`; Settings AI summary card
   with "Manage models →" deep-link; `OPEN_ADMIN { target:'models' }`.
-  *PRD: —*
-- [ ] **F18 — Real upstream provider classes** · *High* · depends on F15
+  *PRD: [multi-provider-models-manager.prd.md](prds/multi-provider-models-manager.prd.md)*
+- [ ] **F14 — Real upstream provider classes** · *High* · depends on F13
   Backend OpenAI / Anthropic / OpenAI-compatible provider implementations behind a common
   interface (streaming, error mapping, model listing). *PRD: —*
-- [ ] **F19 — Role-aware `resolve_provider`** · *High* · depends on F18
+- [ ] **F15 — Role-aware `resolve_provider`** · *High* · depends on F14
   Route Chat → Chat default model, Transformation → Transformation default model;
-  resolve through provider stack (local → cloud → BYOK) honoring user assignments.
+  resolve through provider stack (local → BYOK) honoring user assignments.
   *PRD: —*
-- [ ] **F20 — Encrypted backend key storage** · *High* · depends on F15
+- [ ] **F16 — Encrypted backend key storage** · *High* · depends on F13
   Move BYOK keys from `browser.storage.local` to encrypted server-side storage bound to
   `127.0.0.1`. *PRD: —*
 
 ---
 
-## EPIC-8 — Pluggable Database Store  ⚪  (0%)
+## EPIC-6 — Pluggable Database Store  ⚪  (0%)
 
 User-managed backend database engine and location. Replace the hardcoded
 single-SQLite-file assumption with a pluggable store (default SQLite, plus
 PostgreSQL), a Database Manager settings page mirroring the Models Manager,
 and a migration wizard for switching engines without data loss.
 
-- [ ] **F21 — Pluggable database store** · *High*
+- [ ] **F17 — Pluggable database store** · *High*
   Engine abstraction behind common interface (SQLite + PostgreSQL); Postgres
   search-index fallback for FTS5; Database Manager UI (engine select, guided
   form + connection-string, test-connection, set-active); migration wizard
   with progress + rollback.
-  *PRD: docs/prds/pluggable-database-store.prd.md*
+  *PRD: [pluggable-database-store.prd.md](prds/pluggable-database-store.prd.md)*
 
 ---
 
@@ -221,47 +289,55 @@ and a migration wizard for switching engines without data loss.
 Ordered by dependency readiness. Open a PRD (`/plan-prd`) against the first pending item
 its EPIC can unblock.
 
-1. **F21** — Pluggable database store (unblocks data portability; functional MVP prioritized, security hardening follows)
-2. **F18** — Real upstream provider classes (unblocks F19; EPIC-7 backend slice)
-2. **F19** — Role-aware `resolve_provider` (unblocks end-to-end BYOK)
-3. **F20** — Encrypted backend key storage (security follow-up to F15)
-4. **F16** — EPIC-5 remainder (confirm scope first)
-5. **F17** — EPIC-6 remainder (confirm scope first)
+1. **F17** — Pluggable database store (unblocks data portability; functional MVP prioritized, security hardening follows)
+2. **F14** — Real upstream provider classes (unblocks F15; EPIC-5 backend slice)
+3. **F15** — Role-aware `resolve_provider` (unblocks end-to-end BYOK)
+4. **F16** — Encrypted backend key storage (security follow-up to F13)
 
 ---
 
 ## Dependency Graph
 
 ```
-EPIC-1 (Backend) ── foundation for all
-EPIC-4 (Ollama) ──┐
-EPIC-6 (Cloud)  ──┼──► F13 (Enhance) ──► F14 (Transform)
-                  │                      │
-                  └──► F15 (Models FE) ──┼──► F18 (providers) ──► F19 (resolve_provider)
-                                         └──► F20 (encrypted keys)
+Foundation
+  EPIC-1 (Backend) ── foundation for all
 
-EPIC-2 (Sidebar MVP):
+Local AI
+  EPIC-4 (Ollama) ──► F11 (Enhance, ⛔) ──► F12 (Transform)
+                                        │
+                                        └──► F13 (Models FE) ──► F14 (providers) ──► F15 (resolve_provider)
+                                                                └──► F16 (encrypted keys)
+
+Sidebar (EPIC-2)
   F1 ◄── F2 ◄── F5
   F1 ◄── F4
   F1 ◄── F6
   F3 ◄── F5
-  F7, F8, F11 parallel to F2–F4
+  F7, F8, F9 parallel to F2–F4
 
-EPIC-5 (Sync):
-  F9, F10 independent
-  F16 (remainder) TBD
-
-EPIC-8 (Pluggable DB):
-  F21 (pluggable store) — functional MVP; encrypted credential storage follows
+Pluggable DB (EPIC-6)
+  F17 (pluggable store) — functional MVP; encrypted credential storage follows
 ```
 
 ---
 
 ## Definition of Done (per feature)
 
-- Acceptance criteria for the feature met
-- `just test` (pytest) green; new extension tests green
-- `just lint` clean (ruff + tsc; ruff introduces 0 new errors)
-- `just build` succeeds (Chrome build emits expected `admin.html` + `sidepanel.html`)
-- Box ticked `- [x]` here + Status Summary % updated
+- Acceptance criteria for the feature met (not just "tests green")
+- `just test` passes — **both suites**: API (`pytest`), Extension (vitest)
+- `just lint` clean — `tsc --noEmit` (ext) + `ruff check .` (api); ruff introduces
+  0 new errors
+- `pre-commit run --all-files` passes — includes **mypy --strict**, eslint, prettier,
+  ruff fix+format, detect-secrets
+- `just build` succeeds — Chrome build emits expected `admin.html` + `sidepanel.html`
+- Box ticked `- [x]` here + Status Summary % updated (and legend mark reconciled)
 - Linked PRD path filled in (if one exists)
+
+---
+
+## See also
+
+- [README.md](../README.md) — project overview, setup, commands
+- [docs/glossary.md](glossary.md) — domain terminology
+- [PRDs](prds/) — feature requirement docs
+- [LICENSE](../LICENSE) — MIT

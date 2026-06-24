@@ -6,7 +6,6 @@ export interface DefaultModelAssignmentsProps {
   assignments: Record<ModelRole, ModelAssignment | null>;
   providers: AiProviderConfig[];
   ollamaModels: string[];
-  cloudEnabled: boolean;
   onChange: (role: ModelRole, assignment: ModelAssignment | null) => void;
   onAutoAssign: () => void;
 }
@@ -20,11 +19,9 @@ interface ModelOption {
 function buildOptions(
   providers: AiProviderConfig[],
   ollamaModels: string[],
-  cloudEnabled: boolean,
 ): ModelOption[] {
   const opts: ModelOption[] = [];
   for (const m of ollamaModels) opts.push({ providerId: 'ollama', providerLabel: 'Ollama', model: m });
-  if (cloudEnabled) opts.push({ providerId: 'cloud', providerLabel: 'Free Cloud', model: 'cloud-default' });
   for (const p of providers) {
     if (!p.enabled) continue;
     for (const m of p.models) opts.push({ providerId: p.id, providerLabel: p.label, model: m });
@@ -89,11 +86,10 @@ export function DefaultModelAssignments({
   assignments,
   providers,
   ollamaModels,
-  cloudEnabled,
   onChange,
   onAutoAssign,
 }: DefaultModelAssignmentsProps) {
-  const options = buildOptions(providers, ollamaModels, cloudEnabled);
+  const options = buildOptions(providers, ollamaModels);
 
   const missing: string[] = [];
   if (!assignments.chat) missing.push('Chat Model');

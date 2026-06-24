@@ -1,7 +1,7 @@
 # Plan: Multi-Provider Models Manager — BYOK Inference (Milestone 1, refresh)
 
 **Source PRD**: `docs/prds/multi-provider-models-manager.prd.md`
-**Selected Milestone**: #1 — BYOK inference works end-to-end (roadmap F18)
+**Selected Milestone**: #1 — BYOK inference works end-to-end (roadmap F14)
 **Complexity**: Medium-Large
 
 ## Summary
@@ -20,7 +20,7 @@ ships encrypted server-side storage.
 | #3 Model listing | **`GET /v1/models` with graceful fallback to empty list** | Both OpenAI + Anthropic support it; OpenAI-compatible servers that don't return empty — frontend already allows manual entry |
 | #5 Error mapping | **401→`auth_error`, 429→`rate_limited`, 404→`model_not_found`, other→generic `ProviderError`** | Routes already map `ProviderError`→HTTP 503; structured messages let the frontend show specific guidance |
 | #1 Encryption | **Deferred to M3** | Not needed for M1 (per-request key, no persistence) |
-| #2 Fallback policy | **Deferred to M2** | M1 only activates BYOK when explicitly requested; existing Ollama→Cloud fallback untouched |
+| #2 Fallback policy | **Deferred to M2** | M1 only activates BYOK when explicitly requested; existing Ollama path untouched |
 
 **Key transport for M1**: the browser sends the key in the request body via a new `byok` field.
 This is no worse than today's `browser.storage.local` (still localhost-bound). Milestone 3 replaces
@@ -30,12 +30,12 @@ it with encrypted server storage.
 
 | Category | Source | Pattern |
 |---|---|---|
-| Provider class shape | `api/app/services/ai/cloud.py:25-163` | Constructor takes `http: httpx.AsyncClient`; `_headers()` method; `health()`/`generate()`/`stream()`; `_stream_impl` async generator; map `httpx.HTTPError`→`ProviderError` at the boundary |
-| Provider protocol | `api/app/services/ai/provider.py:15-19` | `@runtime_checkable` Protocol — new classes duck-type, do NOT subclass |
-| Factory/selection | `api/app/services/ai/factory.py:8-40` | Return `tuple[AIProvider, label, ProviderStatus]`; raise `ProviderError` with actionable message |
-| SSE route | `api/app/routes/generate.py:21-71` | Inline `data: {json}\n\n` frames (`meta`/`chunk`/`done`/`error`); disconnect check via `request.is_disconnected()` |
-| Pydantic schema (camelCase) | `api/app/schemas/ai.py:33-39` | `model_config = _camel` (alias generator + `populate_by_name`); `Literal[...]` for enums |
-| Streaming test | `api/tests/test_generate_cloud.py:16-98` | Build SSE body with local `_sse()` helper; mock upstream via `httpx_mock` fixture; assert on `r.text` frame contents |
+| Provider class shape | `api/app/services/ai/ollama.py` | Constructor takes `http: httpx.AsyncClient`; `health()`/`generate()`/`stream()`; `_stream_impl` async generator; map `httpx.HTTPError`→`ProviderError` at the boundary |
+| Provider protocol | `api/app/services/ai/provider.py` | `@runtime_checkable` Protocol — new classes duck-type, do NOT subclass |
+| Factory/selection | `api/app/services/ai/factory.py` | Return `tuple[AIProvider, label, ProviderStatus]`; raise `ProviderError` with actionable message |
+| SSE route | `api/app/routes/generate.py` | Inline `data: {json}\n\n` frames (`meta`/`chunk`/`done`/`error`); disconnect check via `request.is_disconnected()` |
+| Pydantic schema (camelCase) | `api/app/schemas/ai.py` | `model_config = _camel` (alias generator + `populate_by_name`); `Literal[...]` for enums |
+| Streaming test | `api/tests/test_generate.py` | Build SSE body with a local helper; mock upstream via `httpx_mock` fixture; assert on `r.text` frame contents |
 | Factory test | `api/tests/test_ai_factory.py` | `_FakeRequest` stub exposing `app.state.http`; `pytest.mark.asyncio`; plain `assert` |
 
 ## Files to Change
@@ -46,7 +46,7 @@ it with encrypted server storage.
 | `api/app/schemas/transform.py` | UPDATE | Extend `TransformRequest` with optional `byok` field |
 | `api/app/services/ai/openai_provider.py` | CREATE | `OpenAIProvider` — covers `openai` + `openai_compatible` via `base_url` param |
 | `api/app/services/ai/anthropic_provider.py` | CREATE | `AnthropicProvider` — Anthropic Messages API + SSE event format |
-| `api/app/services/ai/factory.py` | UPDATE | Add BYOK resolution branch ahead of Ollama/Cloud fallback |
+| `api/app/services/ai/factory.py` | UPDATE | Add BYOK resolution branch ahead of Ollama fallback |
 | `api/app/routes/generate.py` | UPDATE | Pass `byok=req.byok` into `resolve_provider` |
 | `api/app/routes/transform.py` | UPDATE | Pass `byok=req.byok` into `resolve_provider` |
 | `api/tests/test_openai_provider.py` | CREATE | Unit tests: stream parse, health, error mapping |
@@ -85,7 +85,7 @@ it with encrypted server storage.
 - **Validate**: `cd api && uv run pytest tests/test_anthropic_provider.py`.
 
 ### Task 4: Factory BYOK branch (RED→GREEN)
-- **Action**: Extend `resolve_provider` to accept `byok: ByokProviderConfig | None = None`. If `byok` present, construct the matching provider (`openai`/`openai_compatible`→`OpenAIProvider`, `anthropic`→`AnthropicProvider`), call `health()`, return `(provider, label=f"byok:{byok.type}", status)`. If `health()` fails, raise `ProviderError("BYOK provider unreachable: ...")` — do **not** fall through to Ollama/Cloud (explicit BYOK request should fail loudly, not silently downgrade). Existing Ollama→Cloud path unchanged when `byok=None`.
+- **Action**: Extend `resolve_provider` to accept `byok: ByokProviderConfig | None = None`. If `byok` present, construct the matching provider (`openai`/`openai_compatible`→`OpenAIProvider`, `anthropic`→`AnthropicProvider`), call `health()`, return `(provider, label=f"byok:{byok.type}", status)`. If `health()` fails, raise `ProviderError("BYOK provider unreachable: ...")` — do **not** fall through to Ollama (explicit BYOK request should fail loudly, not silently downgrade). Existing Ollama path unchanged when `byok=None`.
 - **Mirror**: `factory.py:8-40` (tuple return, ProviderError with actionable text).
 - **Validate**: `cd api && uv run pytest tests/test_ai_factory.py -k byok`.
 
@@ -95,7 +95,7 @@ it with encrypted server storage.
 - **Validate**: `cd api && uv run pytest tests/test_generate_byok.py`.
 
 ### Task 6: Regression guard (GREEN)
-- **Action**: Confirm existing `test_generate.py`, `test_generate_cloud.py`, `test_transform.py`, `test_ai_factory.py` stay green — the `byok=None` default must leave all current behavior untouched.
+- **Action**: Confirm existing `test_generate.py`, `test_transform.py`, `test_ai_factory.py` stay green — the `byok=None` default must leave all current behavior untouched.
 - **Validate**: `cd api && uv run pytest`.
 
 ## Validation
@@ -127,13 +127,13 @@ cd api && uv run pytest tests/test_generate_byok.py -k "api_key or key"
 | Frontend sends `byok` before M2 wires it | Low | `byok` defaults to `None`; no frontend change in this plan, so no client sends it yet |
 
 ## Acceptance
-- [ ] All tasks complete
-- [ ] `uv run pytest` green (including existing suite — no regressions)
-- [ ] `ruff check`, `ruff format --check`, `mypy app` clean
-- [ ] Integration test proves a mocked OpenAI/Anthropic stream yields the full `meta`/`chunk`/`done` frame sequence through `/generate`
-- [ ] API key never appears in any response payload, error message, or log line (asserted by test)
-- [ ] Existing Ollama + Cloud resolution path unchanged when `byok=None`
-- [ ] Patterns mirrored from `cloud.py` / `factory.py`, not reinvented
+- [x] All tasks complete — evidence: `docs/testing/multi-provider-models-manager.byok-inference.tdd.md`
+- [x] `uv run pytest` green (175 passed, including existing suite — no regressions)
+- [x] `mypy app/services/ai` clean; `ruff check` — 2 pre-existing `UP035` warnings in `ollama.py` (not introduced by M1)
+- [x] Integration test proves a mocked OpenAI/Anthropic stream yields the full `meta`/`chunk`/`done` frame sequence through `/generate`
+- [x] API key never appears in any response payload, error message, or log line (asserted by test)
+- [x] Existing Ollama resolution path unchanged when `byok=None`
+- [x] Patterns mirrored from `ollama.py` / `factory.py`, not reinvented
 
 ---
-*Next: Milestone 2 (role-aware default routing) — `/plan docs/prds/multi-provider-models-manager.prd.md` again once this plan ships.*
+*Status: COMPLETE. Next: Milestone 2 (role-aware default routing) — `/plan docs/prds/multi-provider-models-manager.prd.md` again, scoping M2.*

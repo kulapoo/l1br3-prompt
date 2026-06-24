@@ -15,7 +15,6 @@ class TransformRequest(BaseModel):
     modes: list[str] = []
     instruction: str | None = None
     model: str | None = None
-    cloud_enabled: bool = False
     byok: ByokProviderConfig | None = None
 
 

@@ -10,10 +10,9 @@ Common terms and acronyms used in l1br3-prompt.
 | **WXT** | Cross-browser extension framework | Frontend tooling |
 | **MCP** | Model Context Protocol | Integration with AI assistants/ChatGPT |
 | **FTS5** | Full-Text Search | SQLite search capability |
-| **E2E** | End-to-End | Encryption (optional cloud sync) |
-| **RLS** | Row-Level Security | Supabase PostgreSQL feature |
-| **LLM** | Large Language Model | Ollama, Groq, Gemini |
+| **LLM** | Large Language Model | Ollama + BYOK providers (OpenAI, Anthropic, …) |
 | **AI** | Artificial Intelligence | Transform/generation engines |
+| **BYOK** | Bring Your Own Key | User-supplied provider API keys |
 
 ## Product Terms
 
@@ -37,15 +36,13 @@ Common terms and acronyms used in l1br3-prompt.
 
 **Transform (in Compose)**
 - AI-powered prompt rewriting built into the Compose tab (`TransformPanel`)
-- Requires Ollama (local) or cloud AI fallback
+- Requires Ollama (local) or a configured BYOK provider
 - Selectable modes (summarize, concise, etc) + custom instructions; modes can be combined
 - User can save custom modes; transforms editor selection or whole text
 
 **Settings Tab**
 - Backend/AI configuration
-- Cloud sync auth (Google/GitHub)
-- AI model selection
-- Rate limiting status
+- AI model selection + provider management
 
 ## Technical Terms
 
@@ -84,8 +81,7 @@ Common terms and acronyms used in l1br3-prompt.
 **Backend**
 - Python FastAPI service (localhost:8000)
 - SQLite database (local)
-- Optional: Supabase cloud sync
-- Optional: Ollama/Groq/Gemini AI
+- Optional: Ollama local AI / BYOK providers
 
 **Ollama**
 - Local LLM runner (localhost:11434)
@@ -93,28 +89,11 @@ Common terms and acronyms used in l1br3-prompt.
 - Enables free local AI
 - Models: Mistral, Llama2, Neural-Chat, etc
 
-## Sync Concepts
-
-**Version Vector**
-- Tracks changes across replicas
-- Enables conflict detection
-- `(user_id, updated_at)` tuple in l1br3-prompt
-
-**Last-Write-Wins (LWW)**
-- Conflict resolution strategy
-- Newer timestamp wins
-- Simple but effective for prompts
-
-**Conflict Resolution**
-- Merging divergent local/cloud changes
-- Happens on sync
-- User notified of conflicts (future phase)
-
 ## Component Architecture
 
 **AppConfigProvider**
 - React Context holding global state
-- View mode, backend status, AI settings, sync state
+- View mode, backend status, AI settings
 - Replaces external state library
 
 **Tab Components**

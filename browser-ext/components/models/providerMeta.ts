@@ -9,7 +9,7 @@ export interface ProviderMeta {
   /** Used for lightweight client-side key validation until backend testing lands. */
   keyPrefix?: string;
   defaultModels: string[];
-  /** Fixed providers (ollama/cloud) cannot be added/edited/deleted by the user. */
+  /** Fixed providers (ollama) cannot be added/edited/deleted by the user. */
   fixed?: boolean;
   supportsKey: boolean;
   docsUrl?: string;
@@ -56,15 +56,6 @@ export const PROVIDER_META: Record<ProviderType, ProviderMeta> = {
     fixed: true,
     supportsKey: false,
   },
-  cloud: {
-    type: 'cloud',
-    label: 'Free Cloud (Groq / Gemini)',
-    description: 'No key needed. Anonymous quota, used as a fallback when nothing else is reachable.',
-    defaultBaseUrl: null,
-    defaultModels: ['cloud-default'],
-    fixed: true,
-    supportsKey: false,
-  },
 };
 
 export const ALL_CAPABILITIES: { id: ProviderCapability; label: string }[] = [
@@ -78,4 +69,4 @@ export const ALL_CAPABILITIES: { id: ProviderCapability; label: string }[] = [
 export const ADDABLE_PROVIDER_TYPES: ProviderType[] = ['openai', 'anthropic', 'openai_compatible'];
 
 /** Order in which provider cards are displayed in Section 2. */
-export const PROVIDER_ORDER: ProviderType[] = ['ollama', 'cloud', 'openai', 'anthropic', 'openai_compatible'];
+export const PROVIDER_ORDER: ProviderType[] = ['ollama', 'openai', 'anthropic', 'openai_compatible'];

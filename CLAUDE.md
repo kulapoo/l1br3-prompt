@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-l1br3-prompt — a local-first prompt management tool for storing, composing, and getting AI-powered suggestions for prompts. Ships as a browser extension sidebar (Chrome/Firefox). All data stays on the user's machine; cloud sync via Supabase is optional.
+l1br3-prompt — a local-first prompt management tool for storing, composing, and getting AI-powered suggestions for prompts. Ships as a browser extension sidebar (Chrome/Firefox). All data stays on the user's machine.
 
 Product roadmap & requirements: `docs/roadmap.md`
 
@@ -27,7 +27,7 @@ l1br3-prompt/
 │   ├── contexts/           # AppConfig React context (global state)
 │   ├── entrypoints/        # WXT entry points (sidepanel, background, content)
 │   ├── hooks/              # Custom React hooks
-│   ├── lib/                # API client, storage, sync utilities
+│   ├── lib/                # API client, storage utilities
 │   └── types/              # TypeScript types
 ├── docs/                   # Roadmap, PRDs, sprint plans (requirements source of truth)
 └── Justfile                # Task runner (just dev, just test, just build)
@@ -72,22 +72,22 @@ Endpoints: prompts CRUD, `/generate` (SSE stream), `/process-template`, `/transf
 
 WXT + React 19 + TypeScript + Tailwind CSS 4. Chrome Side Panel API + Firefox sidebar_action. Keyboard shortcut: `Ctrl+Shift+Y`.
 
-**Global state**: `AppConfigProvider` (React Context, `contexts/AppConfig.tsx`) — backend connection, AI settings, sync state, quick-actions. Persisted to `browser.storage.local`.
+**Global state**: `AppConfigProvider` (React Context, `contexts/AppConfig.tsx`) — backend connection, AI settings, quick-actions. Persisted to `browser.storage.local`.
 
-**Tab components**: `ComposeTab` (Tiptap editor + variables + modifiers + `TransformPanel` for AI rewriting), `PromptsTab` (prompt library), `SettingsTab` (backend/AI/sync config). `TransformPanel` applies combined transformation modes to the editor selection (or whole text with confirmation).
+**Tab components**: `ComposeTab` (Tiptap editor + variables + modifiers + `TransformPanel` for AI rewriting), `PromptsTab` (prompt library), `SettingsTab` (backend/AI config). `TransformPanel` applies combined transformation modes to the editor selection (or whole text with confirmation).
 
-**Entry points**: `sidepanel` (main UI), `background` (opens side panel, broadcasts TAB_CHANGED), `content` (context detection + text injection into ChatGPT/Claude/Gemini).
+**Entry points**: `sidepanel` (main UI), `background` (opens side panel, broadcasts TAB_CHANGED), `content` (context detection + text injection into ChatGPT/Claude/etc.).
 
 ### Phases
 
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Local Backend (FastAPI + SQLite) | ✅ Complete |
-| 2 | Browser Extension Sidebar (MVP UI) | 🔵 In Progress |
+| 2 | Browser Extension Sidebar (MVP UI) | ✅ Complete |
 | 3 | Transform (AI Prompt Rewriting) | ✅ Complete |
 | 4 | Local AI Integration (Ollama) | ✅ Complete |
-| 5 | Optional Cloud Sync (Supabase) | 🔵 In Progress |
-| 6 | Free Cloud AI Fallback | ✅ Complete |
+| 5 | Multi-Provider Models Manager | 🔵 In Progress |
+| 6 | Pluggable Database Store | ⚪ Planned |
 
 ### Planning Workflow
 
