@@ -2,74 +2,41 @@ import os
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 # Must be set before app modules are imported
 os.environ["L1BR3_TESTING"] = "1"
 os.environ["L1BR3_DB_PATH"] = "/tmp/l1br3_test.db"
 
+import app.models  # ensure all models are registered with Base  # noqa: F401
 from app.db.base import Base
 from app.db.engine import get_db
+from app.db.engines.registry import set_active_engine
+from app.db.engines.sqlite import SqliteEngine
 from app.main import app
-
-# Use StaticPool so all connections share the same in-memory database
-test_engine = create_engine(
-    "sqlite:///:memory:",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
-
-
-def _create_fts_and_triggers(conn):
-    conn.execute(text("""
-        CREATE VIRTUAL TABLE IF NOT EXISTS prompts_fts USING fts5(
-            title,
-            content,
-            content='prompts',
-            content_rowid='rowid'
-        )
-    """))
-    conn.execute(text("""
-        CREATE TRIGGER IF NOT EXISTS prompts_ai AFTER INSERT ON prompts BEGIN
-            INSERT INTO prompts_fts(rowid, title, content)
-            VALUES (new.rowid, new.title, new.content);
-        END
-    """))
-    conn.execute(text("""
-        CREATE TRIGGER IF NOT EXISTS prompts_ad AFTER DELETE ON prompts BEGIN
-            INSERT INTO prompts_fts(prompts_fts, rowid, title, content)
-            VALUES ('delete', old.rowid, old.title, old.content);
-        END
-    """))
-    conn.execute(text("""
-        CREATE TRIGGER IF NOT EXISTS prompts_au AFTER UPDATE ON prompts BEGIN
-            INSERT INTO prompts_fts(prompts_fts, rowid, title, content)
-            VALUES ('delete', old.rowid, old.title, old.content);
-            INSERT INTO prompts_fts(rowid, title, content)
-            VALUES (new.rowid, new.title, new.content);
-        END
-    """))
 
 
 @pytest.fixture(scope="function")
 def db() -> Session:
-    import app.models  # ensure all models are registered with Base  # noqa: F401
-    Base.metadata.create_all(bind=test_engine)
-    with test_engine.connect() as conn:
-        _create_fts_and_triggers(conn)
+    # In-memory SQLite with StaticPool so all connections share one DB; matches
+    # the pre-refactor behavior but now expressed through the engine abstraction.
+    engine = SqliteEngine("sqlite:///:memory:", poolclass=StaticPool)
+    set_active_engine(engine)
+    Base.metadata.create_all(bind=engine.engine)
+    with engine.engine.connect() as conn:
+        engine.search.init(conn)
         conn.commit()
-    session = TestingSessionLocal()
+    session = engine.SessionLocal()
     try:
         yield session
     finally:
         session.close()
-        with test_engine.connect() as conn:
-            conn.execute(text("DROP TABLE IF EXISTS prompts_fts"))
+        with engine.engine.connect() as conn:
+            engine.search.drop(conn)
             conn.commit()
-        Base.metadata.drop_all(bind=test_engine)
+        Base.metadata.drop_all(bind=engine.engine)
+        set_active_engine(None)
 
 
 @pytest.fixture(scope="function")

@@ -86,13 +86,15 @@ class SqliteEngine:
     (``from_env``) and tests can wire up ``sqlite://`` in-memory engines directly.
     """
 
-    def __init__(self, url: str) -> None:
+    def __init__(self, url: str, *, poolclass: type | None = None) -> None:
         self.url = url
-        self.engine: Engine = create_engine(
-            url,
-            connect_args={"check_same_thread": False},
-            echo=os.environ.get("L1BR3_SQL_ECHO", "0") == "1",
-        )
+        kwargs: dict = {
+            "connect_args": {"check_same_thread": False},
+            "echo": os.environ.get("L1BR3_SQL_ECHO", "0") == "1",
+        }
+        if poolclass is not None:
+            kwargs["poolclass"] = poolclass
+        self.engine: Engine = create_engine(url, **kwargs)
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         self.search: SearchBackend = _SqliteFtsSearch()
 
