@@ -57,6 +57,11 @@ class TestSqliteEngine:
         eng = SqliteEngine(url="sqlite://")
         assert eng.dialect == "sqlite"
 
+    def test_init_schema_is_noop(self):
+        eng = SqliteEngine(url="sqlite://")
+        with eng.engine.connect() as conn:
+            assert eng.init_schema(conn) is None
+
     def test_exposes_sqlalchemy_engine(self):
         eng = SqliteEngine(url="sqlite://")
         assert isinstance(eng.engine, Engine)
