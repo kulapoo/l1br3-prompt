@@ -48,6 +48,7 @@ Complexity: **Low** / **Medium** / **High**
 | EPIC-5 | Optional Cloud Sync (Supabase) | 🔵 | ~85% |
 | EPIC-6 | Free Cloud AI Fallback | ✅ | ~95% |
 | EPIC-7 | Multi-Provider Models Manager | 🔵 | ~40% |
+| EPIC-8 | Pluggable Database Store | ⚪ | 0% |
 
 ---
 
@@ -199,12 +200,29 @@ shipped; backend provider wiring + encrypted key storage pending.**
 
 ---
 
+## EPIC-8 — Pluggable Database Store  ⚪  (0%)
+
+User-managed backend database engine and location. Replace the hardcoded
+single-SQLite-file assumption with a pluggable store (default SQLite, plus
+PostgreSQL), a Database Manager settings page mirroring the Models Manager,
+and a migration wizard for switching engines without data loss.
+
+- [ ] **F21 — Pluggable database store** · *High*
+  Engine abstraction behind common interface (SQLite + PostgreSQL); Postgres
+  search-index fallback for FTS5; Database Manager UI (engine select, guided
+  form + connection-string, test-connection, set-active); migration wizard
+  with progress + rollback.
+  *PRD: docs/prds/pluggable-database-store.prd.md*
+
+---
+
 ## PRD Backlog (next candidates)
 
 Ordered by dependency readiness. Open a PRD (`/plan-prd`) against the first pending item
 its EPIC can unblock.
 
-1. **F18** — Real upstream provider classes (unblocks F19; EPIC-7 backend slice)
+1. **F21** — Pluggable database store (unblocks data portability; functional MVP prioritized, security hardening follows)
+2. **F18** — Real upstream provider classes (unblocks F19; EPIC-7 backend slice)
 2. **F19** — Role-aware `resolve_provider` (unblocks end-to-end BYOK)
 3. **F20** — Encrypted backend key storage (security follow-up to F15)
 4. **F16** — EPIC-5 remainder (confirm scope first)
@@ -232,6 +250,9 @@ EPIC-2 (Sidebar MVP):
 EPIC-5 (Sync):
   F9, F10 independent
   F16 (remainder) TBD
+
+EPIC-8 (Pluggable DB):
+  F21 (pluggable store) — functional MVP; encrypted credential storage follows
 ```
 
 ---

@@ -1,28 +1,24 @@
-import os
-from pathlib import Path
+"""Backward-compat shim.
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+Preserves every existing ``from app.db.engine import ...`` site by re-exporting
+the legacy module-level names (``engine``, ``SessionLocal``, ``DATABASE_URL``,
+``get_db``) from the active engine resolved via ``app.db.engines.registry``.
+
+New code should import from ``app.db.engines`` directly.
+"""
+
 from typing import Generator
 
-_db_path_env = os.environ.get("L1BR3_DB_PATH")
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
-if _db_path_env:
-    DB_PATH = Path(_db_path_env)
-else:
-    DB_PATH = Path.home() / ".l1br3" / "l1br3.db"
+from app.db.engines.registry import get_active_engine, set_active_engine
 
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+_active = get_active_engine()
 
-DATABASE_URL = f"sqlite:///{DB_PATH}"
-
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    echo=os.environ.get("L1BR3_SQL_ECHO", "0") == "1",
-)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+DATABASE_URL: str = _active.url
+engine: Engine = _active.engine
+SessionLocal: sessionmaker = _active.SessionLocal
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -31,3 +27,13 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+__all__ = [
+    "DATABASE_URL",
+    "engine",
+    "SessionLocal",
+    "get_db",
+    "get_active_engine",
+    "set_active_engine",
+]

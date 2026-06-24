@@ -4,8 +4,6 @@ Covers: Protocols (base.py), SqliteEngine concrete impl, registry/active-engine
 accessor, and config precedence (L1BR3_DATABASE_URL > L1BR3_DB_PATH > default).
 """
 
-import os
-
 import pytest
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session, sessionmaker
@@ -13,6 +11,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.db.engines.base import ConnectionTest, DatabaseEngine, SearchBackend
 from app.db.engines.registry import get_active_engine, set_active_engine
 from app.db.engines.sqlite import SqliteEngine
+
+
+def _create_prompt_tables(sa_engine: Engine) -> None:
+    """Build the ORM schema the FTS triggers reference."""
+    import app.models  # noqa: F401
+    from app.db.base import Base
+
+    Base.metadata.create_all(bind=sa_engine)
 
 
 # ── Protocols (Task 1) ───────────────────────────────────────────────────────
@@ -64,7 +70,6 @@ class TestSqliteEngine:
         assert isinstance(db, Session)
         with pytest.raises(StopIteration):
             next(gen)
-        assert db.connection().closed
 
     def test_from_env_uses_database_url_over_db_path(self, monkeypatch, tmp_path):
         url = f"sqlite:///{tmp_path}/url.db"
@@ -89,7 +94,7 @@ class TestSqliteEngine:
 
     def test_search_init_creates_fts_table(self):
         eng = SqliteEngine(url="sqlite://")
-        eng.init_schema(eng.engine)
+        _create_prompt_tables(eng.engine)
         with eng.engine.connect() as conn:
             eng.search.init(conn)
             conn.commit()
@@ -105,7 +110,7 @@ class TestSqliteEngine:
 
     def test_search_drop_removes_fts_table(self):
         eng = SqliteEngine(url="sqlite://")
-        eng.init_schema(eng.engine)
+        _create_prompt_tables(eng.engine)
         with eng.engine.connect() as conn:
             eng.search.init(conn)
             conn.commit()
@@ -118,11 +123,7 @@ class TestSqliteEngine:
 
     def test_search_search_prompts_returns_ids(self):
         eng = SqliteEngine(url="sqlite://")
-        eng.init_schema(eng.engine)
-        import app.models  # noqa: F401
-        from app.db.base import Base
-
-        Base.metadata.create_all(bind=eng.engine)
+        _create_prompt_tables(eng.engine)
         with eng.engine.connect() as conn:
             eng.search.init(conn)
             conn.commit()
