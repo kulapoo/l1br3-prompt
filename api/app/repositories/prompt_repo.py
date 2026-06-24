@@ -1,8 +1,9 @@
 from datetime import UTC, datetime, timedelta, timezone
 
-from sqlalchemy import func, text
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.db.engines.registry import get_active_engine
 from app.models.prompt import Prompt
 from app.models.tag import Tag
 from app.schemas.prompt import PromptCreate, PromptUpdate
@@ -27,14 +28,7 @@ class PromptRepository:
         limit: int = 20,
     ) -> tuple[list[Prompt], int]:
         if search:
-            # FTS5 search: join fts results back to prompts via rowid to get UUIDs
-            fts_sql = text(
-                "SELECT p.id FROM prompts p "
-                "JOIN prompts_fts ON prompts_fts.rowid = p.rowid "
-                "WHERE prompts_fts MATCH :q ORDER BY rank"
-            )
-            rows = self.db.execute(fts_sql, {"q": search}).fetchall()
-            matched_ids = [r[0] for r in rows]
+            matched_ids = get_active_engine().search.search_prompts(self.db, search)
             if not matched_ids:
                 return [], 0
             query = self.db.query(Prompt).filter(Prompt.id.in_(matched_ids))
