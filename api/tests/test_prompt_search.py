@@ -15,7 +15,6 @@ class TestSearchDelegation:
     def test_find_all_delegates_search_to_backend(self, db, monkeypatch):
         # Arrange: a prompt that would otherwise match FTS.
         from app.models.prompt import Prompt
-        from datetime import datetime, timezone
 
         prompt = Prompt(title="Python debugging", content="Use pdb", category="Code")
         db.add(prompt)

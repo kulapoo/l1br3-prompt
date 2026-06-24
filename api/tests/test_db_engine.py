@@ -38,8 +38,10 @@ class TestProtocols:
         assert ct.error is None
 
     def test_connection_test_frozen(self):
+        from dataclasses import FrozenInstanceError
+
         ct = ConnectionTest(ok=False, error="boom")
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             ct.ok = True  # type: ignore[misc]
 
 

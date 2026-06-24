@@ -10,10 +10,10 @@ Config precedence: ``L1BR3_DATABASE_URL`` (any SQLAlchemy URL) >
 """
 
 import os
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Connection, Engine, create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.engines.base import SearchBackend
@@ -62,7 +62,7 @@ _SEARCH_PROMPTS_SQL = text(
 class _SqliteFtsSearch:
     """FTS5 search backend for the SQLite engine."""
 
-    def init(self, connection: object) -> None:
+    def init(self, connection: Connection) -> None:
         connection.execute(text(_FTS_TABLE_DDL))
         connection.execute(text(_AI_TRIGGER_DDL))
         connection.execute(text(_AD_TRIGGER_DDL))
@@ -72,7 +72,7 @@ class _SqliteFtsSearch:
         rows = db.execute(_SEARCH_PROMPTS_SQL, {"q": query}).fetchall()
         return [r[0] for r in rows]
 
-    def drop(self, connection: object) -> None:
+    def drop(self, connection: Connection) -> None:
         connection.execute(text("DROP TRIGGER IF EXISTS prompts_au"))
         connection.execute(text("DROP TRIGGER IF EXISTS prompts_ad"))
         connection.execute(text("DROP TRIGGER IF EXISTS prompts_ai"))
@@ -97,12 +97,9 @@ class SqliteEngine:
         self.engine: Engine = create_engine(url, **kwargs)
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         self.search: SearchBackend = _SqliteFtsSearch()
+        self.dialect = "sqlite"
 
-    @property
-    def dialect(self) -> str:
-        return "sqlite"
-
-    def init_schema(self, connection: object) -> None:
+    def init_schema(self, connection: Connection) -> None:
         # SQLite relies on Alembic migrations for production fresh-DB schema;
         # tests build tables from Base.metadata directly. No-op here.
         return None

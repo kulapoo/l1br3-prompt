@@ -5,10 +5,11 @@ Protocols that concrete engines/backends duck-type rather than subclass.
 Kept free of model imports so it never participates in an import cycle.
 """
 
+from collections.abc import Generator
 from dataclasses import dataclass
-from typing import Generator, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
-from sqlalchemy import Engine
+from sqlalchemy import Connection, Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 
@@ -24,7 +25,7 @@ class ConnectionTest:
 class SearchBackend(Protocol):
     """Full-text / semantic search seam. SQLite uses FTS5 now; Postgres/tsvector in M2."""
 
-    def init(self, connection: object) -> None:
+    def init(self, connection: Connection) -> None:
         """Create search index tables/triggers on the given connection."""
         ...
 
@@ -32,7 +33,7 @@ class SearchBackend(Protocol):
         """Return prompt IDs matching ``query``, ordered by relevance."""
         ...
 
-    def drop(self, connection: object) -> None:
+    def drop(self, connection: Connection) -> None:
         """Remove the search index (used for test teardown)."""
         ...
 
@@ -47,7 +48,7 @@ class DatabaseEngine(Protocol):
     dialect: str
     search: SearchBackend
 
-    def init_schema(self, connection: object) -> None:
+    def init_schema(self, connection: Connection) -> None:
         """Idempotent schema bootstrap hook (no-op for engines that rely on Alembic)."""
         ...
 
