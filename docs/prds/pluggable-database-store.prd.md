@@ -46,7 +46,7 @@ We believe **letting users configure the backend's database engine and location*
 ## Delivery Milestones
 | # | Milestone | Outcome | Status | Plan |
 |---|---|---|---|---|
-| 1 | Engine abstraction | Backend reads/writes through a common interface; SQLite impl behind it; default unchanged | in-progress | `docs/plans/pluggable-database-store.engine-abstraction.plan.md` |
+| 1 | Engine abstraction | Backend reads/writes through a common interface; SQLite impl behind it; default unchanged | completed | `docs/plans/pluggable-database-store.engine-abstraction.plan.md` (evidence: `docs/testing/pluggable-database-store.engine-abstraction.tdd.md`) |
 | 2 | PostgreSQL engine | Second concrete impl; search-index fallback for FTS5 | pending | — |
 | 3 | Database Manager UI | Settings page mirroring Models Manager: engine select, form/connection-string, test, set-active | pending | — |
 | 4 | Migration wizard | On switch, copy all data to new target with progress + rollback | pending | — |
