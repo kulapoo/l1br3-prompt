@@ -24,16 +24,6 @@
     },
   },
 
-  "permission": {
-    "bash": "ask",
-    "read": "allow",
-    "edit": "ask",
-    "glob": "allow",
-    "grep": "allow",
-    "write": "ask",
-    "task": "ask",
-  },
-
   "attachment": {
     "image": {
       "auto_resize": true,
@@ -57,9 +47,9 @@
       "path": ".opencode/rules/",
       "description": "Style/workflow rules, including python/ and typescript/ subdirs",
     },
-    "spec": {
-      "path": "requirements.md",
-      "description": "Full product specification",
+    "roadmap": {
+      "path": "docs/roadmap.md",
+      "description": "Product roadmap & requirements source of truth",
     },
   },
 }

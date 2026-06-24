@@ -3,6 +3,8 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
+from app.schemas.ai import ByokProviderConfig
+
 _camel = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
@@ -14,6 +16,7 @@ class TransformRequest(BaseModel):
     instruction: str | None = None
     model: str | None = None
     cloud_enabled: bool = False
+    byok: ByokProviderConfig | None = None
 
 
 class TransformModeCreate(BaseModel):

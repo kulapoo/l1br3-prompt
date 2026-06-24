@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 l1br3-prompt — a local-first prompt management tool for storing, composing, and getting AI-powered suggestions for prompts. Ships as a browser extension sidebar (Chrome/Firefox). All data stays on the user's machine; cloud sync via Supabase is optional.
 
-Full product spec: `requirements.md`
+Product roadmap & requirements: `docs/roadmap.md`
 
 ## Repository Layout
 
@@ -29,8 +29,8 @@ l1br3-prompt/
 │   ├── hooks/              # Custom React hooks
 │   ├── lib/                # API client, storage, sync utilities
 │   └── types/              # TypeScript types
-├── Justfile                # Task runner (just dev, just test, just build)
-└── requirements.md         # Full product specification
+├── docs/                   # Roadmap, PRDs, sprint plans (requirements source of truth)
+└── Justfile                # Task runner (just dev, just test, just build)
 ```
 
 ## Commands

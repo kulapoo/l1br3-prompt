@@ -85,8 +85,8 @@ l1br3-prompt/
 │   ├── entrypoints/        # WXT entry points (sidepanel)
 │   ├── hooks/              # Custom React hooks
 │   └── types/              # TypeScript types
-├── Justfile                # Task runner recipes
-└── requirements.md         # Full product specification
+├── docs/                   # Roadmap, PRDs, sprint plans (source of truth)
+└── Justfile                # Task runner recipes
 ```
 
 ## AI Setup

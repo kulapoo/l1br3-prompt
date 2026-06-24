@@ -37,13 +37,15 @@ async def generate(request: Request, req: GenerateRequest):
             request,
             cloud_enabled=req.cloud_enabled,
             device_id=device_id,
+            byok=req.byok,
         )
     except ProviderError as exc:
         from fastapi import HTTPException, status
+
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),
-        )
+        ) from exc
 
     # Pick the best available model — reuse the status from the factory health check.
     model = req.model or (provider_status.models[0] if provider_status.models else "llama3:8b")

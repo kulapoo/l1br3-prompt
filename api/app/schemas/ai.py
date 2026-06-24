@@ -30,6 +30,24 @@ class AiStatusResponse(BaseModel):
     provider: Literal["ollama", "cloud"] | None = None
 
 
+ByokProviderType = Literal["openai", "anthropic", "openai_compatible"]
+
+
+class ByokProviderConfig(BaseModel):
+    """Per-request bring-your-own-key provider config.
+
+    The browser sends this so the backend can proxy to the user's own provider.
+    Milestone 3 will replace per-request key transport with encrypted server storage.
+    """
+
+    model_config = _camel
+
+    type: ByokProviderType
+    api_key: str
+    base_url: str | None = None
+    model: str | None = None
+
+
 class GenerateRequest(BaseModel):
     model_config = _camel
 
@@ -37,6 +55,7 @@ class GenerateRequest(BaseModel):
     model: str | None = None
     options: dict | None = None
     cloud_enabled: bool = False
+    byok: ByokProviderConfig | None = None
 
 
 class ProcessTemplateRequest(BaseModel):

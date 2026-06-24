@@ -6,7 +6,7 @@
 > tick the matching box and update the Status Summary table below.
 >
 > Source of truth for completion data: `docs/sprint_plan_current.md`.
-> Product spec: `requirements.md`.
+> Requirements source of truth: **this file**.
 
 ## How to use this doc
 
@@ -195,7 +195,7 @@ shipped; backend provider wiring + encrypted key storage pending.**
   *PRD: —*
 - [ ] **F20 — Encrypted backend key storage** · *High* · depends on F15
   Move BYOK keys from `browser.storage.local` to encrypted server-side storage bound to
-  `127.0.0.1` (per `requirements.md` §8). *PRD: —*
+  `127.0.0.1`. *PRD: —*
 
 ---
 

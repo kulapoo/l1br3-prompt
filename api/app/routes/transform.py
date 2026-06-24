@@ -21,16 +21,10 @@ BUILTIN_INSTRUCTIONS: dict[str, str] = {
     "summarize": "Rewrite the prompt below to be more concise while preserving its core intent.",
     "concise": "Remove all filler, redundancy, and vague language from the prompt below.",
     "add_role": (
-        "Add an appropriate expert role assignment at the start of the prompt below "
-        "(e.g. 'You are an expert...')."
+        "Add an appropriate expert role assignment at the start of the prompt below (e.g. 'You are an expert...')."
     ),
-    "chain_of_thought": (
-        "Add step-by-step reasoning cues so the AI works through the task systematically."
-    ),
-    "output_format": (
-        "Add a clear, explicit output-format instruction "
-        "(structure, length, or format as appropriate)."
-    ),
+    "chain_of_thought": ("Add step-by-step reasoning cues so the AI works through the task systematically."),
+    "output_format": ("Add a clear, explicit output-format instruction (structure, length, or format as appropriate)."),
     "best_judgement": (
         "You are a prompt engineering expert. Improve the prompt below using best practices: "
         "add a role if missing, make instructions specific and unambiguous, add an output format "
@@ -60,9 +54,7 @@ def _builtin_responses() -> list[TransformModeResponse]:
     ]
 
 
-def resolve_instructions(
-    modes: list[str], instruction: str | None, custom_map: dict[str, str]
-) -> list[str]:
+def resolve_instructions(modes: list[str], instruction: str | None, custom_map: dict[str, str]) -> list[str]:
     """Resolve mode ids to their instruction text.
 
     Built-ins are looked up in BUILTIN_INSTRUCTIONS (id == slug), custom modes in
@@ -115,6 +107,7 @@ async def transform(request: Request, req: TransformRequest, db: Session = Depen
             request,
             cloud_enabled=req.cloud_enabled,
             device_id=device_id,
+            byok=req.byok,
         )
     except ProviderError as exc:
         raise HTTPException(
@@ -153,9 +146,7 @@ async def transform(request: Request, req: TransformRequest, db: Session = Depen
 def list_transform_modes(db: Session = Depends(get_db)):
     repo = TransformModeRepository(db)
     customs = repo.find_all()
-    responses = _builtin_responses() + [
-        TransformModeResponse.model_validate(mode) for mode in customs
-    ]
+    responses = _builtin_responses() + [TransformModeResponse.model_validate(mode) for mode in customs]
     return ApiResponse.ok(responses)
 
 
