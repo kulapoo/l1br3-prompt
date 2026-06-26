@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -84,7 +84,7 @@ class PromptRepository:
         return prompt
 
     def soft_delete(self, prompt: Prompt) -> None:
-        prompt.deleted_at = datetime.now(timezone.utc)
+        prompt.deleted_at = datetime.now(UTC)
         self.db.flush()
 
     def hard_delete(self, prompt: Prompt) -> None:
@@ -93,7 +93,7 @@ class PromptRepository:
 
     def increment_usage(self, prompt: Prompt) -> Prompt:
         prompt.usage_count += 1
-        prompt.last_used = datetime.now(timezone.utc).isoformat()
+        prompt.last_used = datetime.now(UTC).isoformat()
         self.db.flush()
         self.db.refresh(prompt)
         return prompt

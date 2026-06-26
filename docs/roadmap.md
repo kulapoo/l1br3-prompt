@@ -20,7 +20,7 @@
 - [EPIC-2 — Sidebar UI (MVP Core)](#epic-2--sidebar-ui-mvp-core--) _✅_
 - [EPIC-3 — Transform (AI Prompt Rewriting)](#epic-3--transform-ai-prompt-rewriting--) _✅_
 - [EPIC-4 — Local AI Integration (Ollama)](#epic-4--local-ai-integration-ollama--) _✅_
-- [EPIC-5 — Multi-Provider Models Manager](#epic-5--multi-provider-models-manager---)
+- [EPIC-5 — Multi-Provider Models Manager](#epic-5--multi-provider-models-manager--) _✅_
 - [EPIC-6 — Pluggable Database Store](#epic-6--pluggable-database-store---)
 - [PRD Backlog](#prd-backlog-next-candidates)
 - [Dependency Graph](#dependency-graph)
@@ -67,7 +67,7 @@ Complexity: **Low** / **Medium** / **High**
 | EPIC-2 | Sidebar UI (MVP Core) | ✅ | 100% |
 | EPIC-3 | Transform (AI Prompt Rewriting) | ✅ | 100% |
 | EPIC-4 | Local AI Integration (Ollama) | ✅ | 100% |
-| EPIC-5 | Multi-Provider Models Manager | 🔵 | ~40% |
+| EPIC-5 | Multi-Provider Models Manager | ✅ | 100% |
 | EPIC-6 | Pluggable Database Store | ⚪ | 0% |
 
 ---
@@ -81,7 +81,7 @@ at `1.0.0`.
 | Milestone | Scope | Status |
 |-----------|-------|--------|
 | `v0.1` | Local-first MVP — EPICs 1–4 (backend, sidebar, transform, Ollama) | ✅ Shipped |
-| `v0.2` | Provider breadth — EPIC-5 (Multi-Provider Models Manager) | 🔵 Frontend slice shipped |
+| `v0.2` | Provider breadth — EPIC-5 (Multi-Provider Models Manager) | ✅ Shipped |
 | `v0.3` | Data portability — EPIC-6 (Pluggable Database Store) | ⚪ Planned |
 
 No firm calendar dates — the project ships when acceptance criteria are met and
@@ -242,11 +242,11 @@ Auto-detect Ollama, Jinja2 template processing, MCP server, streaming to sidebar
 
 ---
 
-## EPIC-5 — Multi-Provider Models Manager  🔵  (~40%)
+## EPIC-5 — Multi-Provider Models Manager  ✅
 
 Bring-your-own-key providers (OpenAI, Anthropic, OpenAI-compatible) alongside Local
-(Ollama), with per-purpose Default Model Assignments. **Frontend slice shipped;
-backend provider wiring + encrypted key storage pending.**
+(Ollama), with per-purpose Default Model Assignments. **Frontend, backend provider
+wiring, role-aware routing, and encrypted server-side key storage all shipped.**
 
 - [x] **F13 — AI Models Manager (frontend)** · *High* · depends on F12, EPIC-4
   Admin "Models" view: provider cards + per-purpose Default Model Assignments
@@ -255,14 +255,14 @@ backend provider wiring + encrypted key storage pending.**
   (`providers`, `assignments`), keys in `browser.storage.local`; Settings AI summary card
   with "Manage models →" deep-link; `OPEN_ADMIN { target:'models' }`.
   *PRD: [multi-provider-models-manager.prd.md](prds/multi-provider-models-manager.prd.md)*
-- [ ] **F14 — Real upstream provider classes** · *High* · depends on F13
+- [x] **F14 — Real upstream provider classes** · *High* · depends on F13
   Backend OpenAI / Anthropic / OpenAI-compatible provider implementations behind a common
   interface (streaming, error mapping, model listing). *PRD: —*
-- [ ] **F15 — Role-aware `resolve_provider`** · *High* · depends on F14
+- [x] **F15 — Role-aware `resolve_provider`** · *High* · depends on F14
   Route Chat → Chat default model, Transformation → Transformation default model;
   resolve through provider stack (local → BYOK) honoring user assignments.
   *PRD: —*
-- [ ] **F16 — Encrypted backend key storage** · *High* · depends on F13
+- [x] **F16 — Encrypted backend key storage** · *High* · depends on F13
   Move BYOK keys from `browser.storage.local` to encrypted server-side storage bound to
   `127.0.0.1`. *PRD: —*
 
@@ -290,9 +290,8 @@ Ordered by dependency readiness. Open a PRD (`/plan-prd`) against the first pend
 its EPIC can unblock.
 
 1. **F17** — Pluggable database store (unblocks data portability; functional MVP prioritized, security hardening follows)
-2. **F14** — Real upstream provider classes (unblocks F15; EPIC-5 backend slice)
-3. **F15** — Role-aware `resolve_provider` (unblocks end-to-end BYOK)
-4. **F16** — Encrypted backend key storage (security follow-up to F13)
+
+_EPIC-5 (F14/F15/F16) shipped — removed from backlog._
 
 ---
 

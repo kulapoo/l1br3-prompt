@@ -46,46 +46,52 @@ def upgrade() -> None:
         )
     """)
 
-    # FTS5 virtual table for full-text search on title + content
-    op.execute("""
-        CREATE VIRTUAL TABLE prompts_fts USING fts5(
-            title,
-            content,
-            content='prompts',
-            content_rowid='rowid'
-        )
-    """)
+    # FTS5 virtual table for full-text search on title + content — SQLite only.
+    # Postgres gets its tsvector search index from migration 005 instead. Guarded
+    # so the same revision applies on both dialects (one chain, not a fork).
+    bind = op.get_bind()
+    if bind.dialect.name == "sqlite":
+        op.execute("""
+            CREATE VIRTUAL TABLE prompts_fts USING fts5(
+                title,
+                content,
+                content='prompts',
+                content_rowid='rowid'
+            )
+        """)
 
-    # Triggers to keep FTS index in sync
-    op.execute("""
-        CREATE TRIGGER prompts_ai AFTER INSERT ON prompts BEGIN
-            INSERT INTO prompts_fts(rowid, title, content)
-            VALUES (new.rowid, new.title, new.content);
-        END
-    """)
+        # Triggers to keep FTS index in sync
+        op.execute("""
+            CREATE TRIGGER prompts_ai AFTER INSERT ON prompts BEGIN
+                INSERT INTO prompts_fts(rowid, title, content)
+                VALUES (new.rowid, new.title, new.content);
+            END
+        """)
 
-    op.execute("""
-        CREATE TRIGGER prompts_ad AFTER DELETE ON prompts BEGIN
-            INSERT INTO prompts_fts(prompts_fts, rowid, title, content)
-            VALUES ('delete', old.rowid, old.title, old.content);
-        END
-    """)
+        op.execute("""
+            CREATE TRIGGER prompts_ad AFTER DELETE ON prompts BEGIN
+                INSERT INTO prompts_fts(prompts_fts, rowid, title, content)
+                VALUES ('delete', old.rowid, old.title, old.content);
+            END
+        """)
 
-    op.execute("""
-        CREATE TRIGGER prompts_au AFTER UPDATE ON prompts BEGIN
-            INSERT INTO prompts_fts(prompts_fts, rowid, title, content)
-            VALUES ('delete', old.rowid, old.title, old.content);
-            INSERT INTO prompts_fts(rowid, title, content)
-            VALUES (new.rowid, new.title, new.content);
-        END
-    """)
+        op.execute("""
+            CREATE TRIGGER prompts_au AFTER UPDATE ON prompts BEGIN
+                INSERT INTO prompts_fts(prompts_fts, rowid, title, content)
+                VALUES ('delete', old.rowid, old.title, old.content);
+                INSERT INTO prompts_fts(rowid, title, content)
+                VALUES (new.rowid, new.title, new.content);
+            END
+        """)
 
 
 def downgrade() -> None:
-    op.execute("DROP TRIGGER IF EXISTS prompts_au")
-    op.execute("DROP TRIGGER IF EXISTS prompts_ad")
-    op.execute("DROP TRIGGER IF EXISTS prompts_ai")
-    op.execute("DROP TABLE IF EXISTS prompts_fts")
+    bind = op.get_bind()
+    if bind.dialect.name == "sqlite":
+        op.execute("DROP TRIGGER IF EXISTS prompts_au")
+        op.execute("DROP TRIGGER IF EXISTS prompts_ad")
+        op.execute("DROP TRIGGER IF EXISTS prompts_ai")
+        op.execute("DROP TABLE IF EXISTS prompts_fts")
     op.execute("DROP TABLE IF EXISTS prompt_tags")
     op.execute("DROP TABLE IF EXISTS prompts")
     op.execute("DROP TABLE IF EXISTS tags")

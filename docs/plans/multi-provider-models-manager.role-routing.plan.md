@@ -107,4 +107,4 @@ cd api && uv run pytest
 - [ ] No backend edits, no migration
 
 ---
-*Status: IN-PROGRESS. Follows M1 (`docs/plans/multi-provider-models-manager.plan.md`). Next: M3 — encrypted server-side key storage.*
+*Status: COMPLETED. Follows M1 (`docs/plans/multi-provider-models-manager.plan.md`). Verified: `pnpm test` (116), `tsc --noEmit`, `uv run pytest` (175) all green. Next: M3 — encrypted server-side key storage.*

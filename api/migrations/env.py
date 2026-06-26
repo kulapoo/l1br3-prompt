@@ -9,7 +9,13 @@ from app.db.base import Base
 import app.models  # noqa: F401 — ensure models are registered
 
 config = context.config
-config.set_main_option("sqlalchemy.url", get_active_engine().url)
+# Inject the active engine's URL only when none is pre-set. alembic.ini ships an
+# empty sqlalchemy.url, so the normal startup path resolves to the active engine
+# (unchanged). A caller that wants to migrate a specific target URL — e.g. the
+# Database Manager's activate() pointing at a new DB — sets it on the config
+# before invoking `alembic upgrade`, and we honor it.
+if not config.get_main_option("sqlalchemy.url"):
+    config.set_main_option("sqlalchemy.url", get_active_engine().url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

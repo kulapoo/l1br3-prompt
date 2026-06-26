@@ -91,15 +91,19 @@ export type ModelRole = "chat" | "transform"
  * is derived from the existing connection flag and is never stored in the
  * providers array.
  *
- * NOTE: `apiKey` is held in browser.storage.local for now. Encrypted backend
- * key storage arrives in a follow-up.
+ * M3: the API key is stored encrypted server-side and referenced by
+ * `serverProviderId`. The plaintext key never persists in browser storage;
+ * `hasKey` mirrors the server's `has_key` flag for display.
  */
 export interface AiProviderConfig {
   id: string
   type: ProviderType
   label: string
   baseUrl: string | null
-  apiKey: string | null
+  /** Server-side ai_providers row id holding the encrypted key. */
+  serverProviderId: string | null
+  /** Mirrors the backend `has_key` flag for display; null when unkeyed. */
+  hasKey: boolean | null
   enabled: boolean
   capabilities: ProviderCapability[]
   models: string[]
@@ -114,12 +118,53 @@ export interface ModelAssignment {
 /**
  * BYOK provider config sent on a /generate or /transform request. Matches the
  * backend `ByokProviderConfig` (api/app/schemas/ai.py) field-for-field in
- * camelCase. M2 ships per-request key transport; M3 will move the key source
- * to encrypted server storage without changing this wire shape.
+ * camelCase.
+ *
+ * M3 wire shape: the browser sends `providerId` referencing a stored,
+ * encrypted ai_providers row; the backend decrypts in-process and the plaintext
+ * key never travels over the wire.
  */
 export interface ByokRequestConfig {
-  type: Exclude<ProviderType, "ollama">
-  apiKey: string
-  baseUrl: string | null
+  providerId: string
+  type?: Exclude<ProviderType, "ollama">
+  baseUrl?: string | null
   model: string
+}
+
+// ── Database Manager (M3) ────────────────────────────────────────────────────
+
+export type DbEngine = "sqlite" | "postgresql"
+
+/**
+ * A database connection as returned by the backend. The raw URL/password are
+ * NEVER present — only `maskedUrl` (password replaced with ***) and
+ * `hasPassword`. Mirrors the AI provider `hasKey`-only key signal.
+ */
+export interface DatabaseConnectionRead {
+  id: string
+  label: string
+  engine: DbEngine
+  hasPassword: boolean
+  host: string | null
+  port: number | null
+  database: string | null
+  maskedUrl: string
+  isActive: boolean
+  isDefault: boolean
+}
+
+export interface DatabaseConnectionCreate {
+  label: string
+  engine: DbEngine
+  url: string
+}
+
+export interface DatabaseConnectionUpdate {
+  label?: string
+  url?: string
+}
+
+export interface ConnectionTestResult {
+  ok: boolean
+  error: string | null
 }

@@ -1,6 +1,5 @@
 """Tests for soft-delete behaviour and sync tombstone visibility."""
 
-import pytest
 
 SAMPLE = {
     "title": "Soft Delete Test",

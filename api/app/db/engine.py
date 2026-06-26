@@ -7,7 +7,7 @@ the legacy module-level names (``engine``, ``SessionLocal``, ``DATABASE_URL``,
 New code should import from ``app.db.engines`` directly.
 """
 
-from typing import Generator
+from collections.abc import Generator
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker

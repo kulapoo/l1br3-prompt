@@ -14,15 +14,15 @@ export interface ResolveRoleProviderOptions {
 
 /**
  * Resolve a purpose-specific Default Model Assignment into the BYOK wire shape
- * the backend already accepts (M1 contract). Pure function — no side effects,
+ * the backend already accepts (M3 contract). Pure function — no side effects,
  * safe to call from any component or test.
  *
- * Resolution rules (OQ#2 fallback policy):
+ * Resolution rules (OQ#2 fallback policy, M3 update):
  *   1. No assignment for the role           → Ollama fallback (no byok).
  *   2. Assignment points at `'ollama'`       → Ollama, using the assigned model.
  *   3. Assignment points at a BYOK provider that is missing, disabled, or has
- *      no/empty apiKey                        → Ollama fallback + console warning.
- *   4. Otherwise                              → emit `{ type, apiKey, baseUrl, model }`.
+ *      no serverProviderId (no stored key)   → Ollama fallback + console warning.
+ *   4. Otherwise                              → emit `{ providerId, type, baseUrl, model }`.
  */
 export function resolveRoleProvider(
   role: ModelRole,
@@ -41,18 +41,18 @@ export function resolveRoleProvider(
   }
 
   const provider = providers.find((p) => p.id === assignment.providerId)
-  if (!provider || !provider.enabled || !provider.apiKey || provider.type === "ollama") {
+  if (!provider || !provider.enabled || !provider.serverProviderId || provider.type === "ollama") {
     console.warn(
       `[roleRouter] assignment for "${role}" points at provider "${assignment.providerId}" ` +
-        "which is missing, disabled, or has no API key; falling back to local Ollama.",
+        "which is missing, disabled, or has no server-side key; falling back to local Ollama.",
     )
     return { byok: undefined, model: opts.fallbackModel }
   }
 
   return {
     byok: {
+      providerId: provider.serverProviderId,
       type: provider.type,
-      apiKey: provider.apiKey,
       baseUrl: provider.baseUrl,
       model: assignment.model,
     },

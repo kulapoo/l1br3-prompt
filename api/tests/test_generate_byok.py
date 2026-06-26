@@ -1,7 +1,12 @@
-"""Integration tests for /generate routing through BYOK providers.
+"""Integration tests for /generate routing through BYOK providers (M3).
 
-Covers the full meta/chunk/done SSE frame contract end-to-end, the meta-frame provider
-label, and verifies the API key never appears in any response payload or error frame.
+M3 wire shape: the browser sends ``byok.providerId`` referencing a stored,
+encrypted ai_providers row; the plaintext key never appears in any request
+body after creation, and never in any response payload, error frame, or log.
+
+Covers the full meta/chunk/done SSE frame contract end-to-end, the meta-frame
+provider label, and verifies the API key never appears in any response payload
+or error frame.
 """
 
 import json
@@ -16,6 +21,16 @@ ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages"
 
 SECRET_OPENAI_KEY = "sk-secret-openai-key-12345"
 SECRET_ANT_KEY = "sk-ant-secret-67890"
+
+
+def _seed_provider(client, *, type="openai", base_url=None, api_key=SECRET_OPENAI_KEY) -> str:
+    """Create a stored provider via the API and return its id."""
+    body = {"type": type, "apiKey": api_key}
+    if base_url is not None:
+        body["baseUrl"] = base_url
+    r = client.post("/api/v1/providers", json=body)
+    assert r.status_code == 201, r.text
+    return r.json()["data"]["id"]
 
 
 def _openai_sse(chunks: list[str]) -> str:
@@ -40,16 +55,14 @@ def _frames(text: str) -> list[dict]:
 
 
 def test_generate_byok_openai_streams_full_frame_sequence(client, httpx_mock: HTTPXMock):
-    """OpenAI BYOK: meta(byok:openai) → chunk* → done, full sequence."""
+    """OpenAI BYOK via provider_id: meta(byok:openai) → chunk* → done."""
+    pid = _seed_provider(client, api_key=SECRET_OPENAI_KEY)
     httpx_mock.add_response(url=OPENAI_MODELS_URL, json={"data": [{"id": "gpt-4o"}]})
     httpx_mock.add_response(url=OPENAI_CHAT_URL, text=_openai_sse(["Hel", "lo"]))
 
     r = client.post(
         "/api/v1/generate",
-        json={
-            "prompt": "hi",
-            "byok": {"type": "openai", "apiKey": SECRET_OPENAI_KEY},
-        },
+        json={"prompt": "hi", "byok": {"providerId": pid}},
     )
     assert r.status_code == 200
     frames = _frames(r.text)
@@ -60,7 +73,8 @@ def test_generate_byok_openai_streams_full_frame_sequence(client, httpx_mock: HT
 
 
 def test_generate_byok_anthropic_streams_full_frame_sequence(client, httpx_mock: HTTPXMock):
-    """Anthropic BYOK: meta(byok:anthropic) → chunk* → done."""
+    """Anthropic BYOK via provider_id: meta(byok:anthropic) → chunk* → done."""
+    pid = _seed_provider(client, type="anthropic", api_key=SECRET_ANT_KEY)
     httpx_mock.add_response(
         url=ANTHROPIC_MODELS_URL,
         json={"data": [{"id": "claude-3-5-sonnet-20241022"}]},
@@ -72,7 +86,7 @@ def test_generate_byok_anthropic_streams_full_frame_sequence(client, httpx_mock:
         json={
             "prompt": "hi",
             "model": "claude-3-5-sonnet-20241022",
-            "byok": {"type": "anthropic", "apiKey": SECRET_ANT_KEY},
+            "byok": {"providerId": pid},
         },
     )
     assert r.status_code == 200
@@ -83,6 +97,7 @@ def test_generate_byok_anthropic_streams_full_frame_sequence(client, httpx_mock:
 
 
 def test_generate_byok_openai_compatible_uses_custom_base_url(client, httpx_mock: HTTPXMock):
+    pid = _seed_provider(client, type="openai_compatible", base_url="http://localhost:1234/v1", api_key="any")
     custom_models = "http://localhost:1234/v1/models"
     custom_chat = "http://localhost:1234/v1/chat/completions"
     httpx_mock.add_response(url=custom_models, json={"data": [{"id": "local"}]})
@@ -90,14 +105,7 @@ def test_generate_byok_openai_compatible_uses_custom_base_url(client, httpx_mock
 
     r = client.post(
         "/api/v1/generate",
-        json={
-            "prompt": "hi",
-            "byok": {
-                "type": "openai_compatible",
-                "apiKey": "any",
-                "baseUrl": "http://localhost:1234/v1",
-            },
-        },
+        json={"prompt": "hi", "byok": {"providerId": pid}},
     )
     assert r.status_code == 200
     frames = _frames(r.text)
@@ -106,11 +114,12 @@ def test_generate_byok_openai_compatible_uses_custom_base_url(client, httpx_mock
 
 def test_generate_byok_unreachable_returns_503_not_silent_fallback(client, httpx_mock: HTTPXMock):
     """Explicit BYOK that fails health check must 503 — never silently downgrade to Ollama/Cloud."""
+    pid = _seed_provider(client, api_key=SECRET_OPENAI_KEY)
     httpx_mock.add_exception(httpx.ConnectError("refused"), url=OPENAI_MODELS_URL)
 
     r = client.post(
         "/api/v1/generate",
-        json={"prompt": "hi", "byok": {"type": "openai", "apiKey": SECRET_OPENAI_KEY}},
+        json={"prompt": "hi", "byok": {"providerId": pid}},
     )
     assert r.status_code == 503
     assert "BYOK provider unreachable" in r.json().get("detail", "")
@@ -118,12 +127,13 @@ def test_generate_byok_unreachable_returns_503_not_silent_fallback(client, httpx
 
 def test_generate_byok_stream_error_surfaces_error_frame(client, httpx_mock: HTTPXMock):
     """Mid-stream provider error produces an error SSE frame and key never leaks."""
+    pid = _seed_provider(client, api_key=SECRET_OPENAI_KEY)
     httpx_mock.add_response(url=OPENAI_MODELS_URL, json={"data": [{"id": "gpt-4o"}]})
     httpx_mock.add_response(url=OPENAI_CHAT_URL, status_code=401, json={"error": "bad key"})
 
     r = client.post(
         "/api/v1/generate",
-        json={"prompt": "hi", "byok": {"type": "openai", "apiKey": SECRET_OPENAI_KEY}},
+        json={"prompt": "hi", "byok": {"providerId": pid}},
     )
     # 401 surfaces as an SSE error frame (stream started after health passed)
     assert r.status_code == 200
@@ -135,17 +145,19 @@ def test_generate_byok_stream_error_surfaces_error_frame(client, httpx_mock: HTT
 
 def test_generate_byok_api_key_never_appears_in_response_payload(client, httpx_mock: HTTPXMock):
     """Critical: the API key must never appear in any response body (success or error)."""
+    pid = _seed_provider(client, api_key=SECRET_OPENAI_KEY)
     httpx_mock.add_response(url=OPENAI_MODELS_URL, json={"data": [{"id": "gpt-4o"}]})
     httpx_mock.add_response(url=OPENAI_CHAT_URL, status_code=401, json={"error": "bad key"})
 
     r = client.post(
         "/api/v1/generate",
-        json={"prompt": "hi", "byok": {"type": "openai", "apiKey": SECRET_OPENAI_KEY}},
+        json={"prompt": "hi", "byok": {"providerId": pid}},
     )
     assert SECRET_OPENAI_KEY not in r.text
 
 
 def test_generate_byok_anthropic_key_never_appears_in_response_payload(client, httpx_mock: HTTPXMock):
+    pid = _seed_provider(client, type="anthropic", api_key=SECRET_ANT_KEY)
     httpx_mock.add_response(
         url=ANTHROPIC_MODELS_URL,
         json={"data": [{"id": "claude-3-5-sonnet-20241022"}]},
@@ -160,7 +172,7 @@ def test_generate_byok_anthropic_key_never_appears_in_response_payload(client, h
         json={
             "prompt": "hi",
             "model": "claude-3-5-sonnet-20241022",
-            "byok": {"type": "anthropic", "apiKey": SECRET_ANT_KEY},
+            "byok": {"providerId": pid},
         },
     )
     assert r.status_code == 200
@@ -168,16 +180,14 @@ def test_generate_byok_anthropic_key_never_appears_in_response_payload(client, h
 
 
 def test_transform_byok_openai_streams_through_route(client, httpx_mock: HTTPXMock):
-    """Transform route also honors the byok field end-to-end."""
+    """Transform route also honors the provider_id field end-to-end."""
+    pid = _seed_provider(client, api_key=SECRET_OPENAI_KEY)
     httpx_mock.add_response(url=OPENAI_MODELS_URL, json={"data": [{"id": "gpt-4o"}]})
     httpx_mock.add_response(url=OPENAI_CHAT_URL, text=_openai_sse(["rewritten"]))
 
     r = client.post(
         "/api/v1/transform",
-        json={
-            "prompt": "make this concise",
-            "byok": {"type": "openai", "apiKey": SECRET_OPENAI_KEY},
-        },
+        json={"prompt": "make this concise", "byok": {"providerId": pid}},
     )
     assert r.status_code == 200
     frames = _frames(r.text)
@@ -193,7 +203,6 @@ def test_generate_without_byok_unchanged_uses_ollama(client, httpx_mock: HTTPXMo
         url="http://127.0.0.1:11434/api/tags",
         json={"models": [{"name": "llama3:8b"}]},
     )
-    # Ollama generate stream
     body = (
         "".join(f"{json.dumps({'response': 'h', 'done': False})}\n" for _ in range(1))
         + f"{json.dumps({'response': '', 'done': True})}\n"
@@ -207,3 +216,13 @@ def test_generate_without_byok_unchanged_uses_ollama(client, httpx_mock: HTTPXMo
     assert r.status_code == 200
     frames = _frames(r.text)
     assert frames[0] == {"meta": {"provider": "ollama"}}
+
+
+def test_generate_unknown_provider_id_returns_503(client, httpx_mock: HTTPXMock):
+    """A provider_id that doesn't resolve surfaces a clear error, not a silent fallback."""
+    r = client.post(
+        "/api/v1/generate",
+        json={"prompt": "hi", "byok": {"providerId": "no-such-provider"}},
+    )
+    assert r.status_code == 503
+    assert "No provider with id" in r.json().get("detail", "")

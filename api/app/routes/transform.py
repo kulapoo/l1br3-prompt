@@ -104,6 +104,7 @@ async def transform(request: Request, req: TransformRequest, db: Session = Depen
         provider, label, provider_status = await resolve_provider(
             request,
             byok=req.byok,
+            db=db,
         )
     except ProviderError as exc:
         raise HTTPException(

@@ -8,7 +8,8 @@ function makeProvider(overrides: Partial<AiProviderConfig> = {}): AiProviderConf
     type: "openai",
     label: "OpenAI",
     baseUrl: null,
-    apiKey: "sk-openai",
+    serverProviderId: "srv-openai",
+    hasKey: true,
     enabled: true,
     capabilities: ["language"],
     models: ["gpt-4o"],
@@ -40,8 +41,8 @@ describe("resolveRoleProvider", () => {
     expect(result.model).toBe("llama3:8b")
   })
 
-  it("resolves a BYOK OpenAI assignment into a byok config with camelCase fields", () => {
-    const provider = makeProvider({ id: "p1", type: "openai", apiKey: "sk-secret", baseUrl: null })
+  it("resolves a BYOK OpenAI assignment into a providerId-keyed byok config", () => {
+    const provider = makeProvider({ id: "p1", type: "openai", serverProviderId: "srv-1", baseUrl: null })
     const assignments = {
       chat: { providerId: "p1", model: "gpt-4o" },
       transform: null,
@@ -50,8 +51,8 @@ describe("resolveRoleProvider", () => {
       fallbackModel: "fallback",
     })
     expect(result.byok).toEqual({
+      providerId: "srv-1",
       type: "openai",
-      apiKey: "sk-secret",
       baseUrl: null,
       model: "gpt-4o",
     })
@@ -62,7 +63,7 @@ describe("resolveRoleProvider", () => {
     const provider = makeProvider({
       id: "p2",
       type: "anthropic",
-      apiKey: "sk-ant",
+      serverProviderId: "srv-2",
       baseUrl: "https://custom.anthropic.com/v1",
     })
     const assignments = {
@@ -73,16 +74,16 @@ describe("resolveRoleProvider", () => {
       fallbackModel: "fallback",
     })
     expect(result.byok).toEqual({
+      providerId: "srv-2",
       type: "anthropic",
-      apiKey: "sk-ant",
       baseUrl: "https://custom.anthropic.com/v1",
       model: "claude-3-5-sonnet-20241022",
     })
   })
 
   it("resolves the transform role independently from chat", () => {
-    const openai = makeProvider({ id: "oa", type: "openai", apiKey: "sk-oa" })
-    const anthropic = makeProvider({ id: "an", type: "anthropic", apiKey: "sk-an" })
+    const openai = makeProvider({ id: "oa", type: "openai", serverProviderId: "srv-oa" })
+    const anthropic = makeProvider({ id: "an", type: "anthropic", serverProviderId: "srv-an" })
     const assignments = {
       chat: { providerId: "oa", model: "gpt-4o" },
       transform: { providerId: "an", model: "claude-3-5-sonnet-20241022" },
@@ -126,8 +127,8 @@ describe("resolveRoleProvider", () => {
     warn.mockRestore()
   })
 
-  it("falls back to Ollama when the BYOK provider has no api key", () => {
-    const provider = makeProvider({ id: "p1", apiKey: null })
+  it("falls back to Ollama when the BYOK provider has no server-side key (serverProviderId null)", () => {
+    const provider = makeProvider({ id: "p1", serverProviderId: null })
     const assignments = {
       chat: { providerId: "p1", model: "gpt-4o" },
       transform: null,
@@ -142,8 +143,8 @@ describe("resolveRoleProvider", () => {
     warn.mockRestore()
   })
 
-  it("falls back to Ollama when the BYOK provider has an empty api key", () => {
-    const provider = makeProvider({ id: "p1", apiKey: "" })
+  it("falls back to Ollama when the BYOK provider has an empty serverProviderId", () => {
+    const provider = makeProvider({ id: "p1", serverProviderId: "" })
     const assignments = {
       chat: { providerId: "p1", model: "gpt-4o" },
       transform: null,
@@ -170,7 +171,7 @@ describe("resolveRoleProvider", () => {
     const provider = makeProvider({
       id: "p3",
       type: "openai_compatible",
-      apiKey: "local",
+      serverProviderId: "srv-3",
       baseUrl: "http://localhost:1234/v1",
     })
     const assignments = {
@@ -179,8 +180,8 @@ describe("resolveRoleProvider", () => {
     }
     const result = resolveRoleProvider("chat", [provider], assignments, { fallbackModel: "f" })
     expect(result.byok).toEqual({
+      providerId: "srv-3",
       type: "openai_compatible",
-      apiKey: "local",
       baseUrl: "http://localhost:1234/v1",
       model: "local-model",
     })

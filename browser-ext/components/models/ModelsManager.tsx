@@ -2,16 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { Cpu, Plus } from 'lucide-react';
 import { useAppConfig } from '../../contexts/AppConfig';
 import type { AiProviderConfig, ModelAssignment, ModelRole, ProviderType } from '../../types';
+import * as api from '../../lib/api';
 import { PROVIDER_META, PROVIDER_ORDER } from './providerMeta';
 import { DefaultModelAssignments } from './DefaultModelAssignments';
 import { ProviderCard, type TestState } from './ProviderCard';
-import { ProviderEditModal } from './ProviderEditModal';
-
-function validateKey(meta: { keyPrefix?: string }, key: string | null | undefined): boolean {
-  if (!key) return false;
-  if (!meta.keyPrefix) return key.trim().length > 0;
-  return key.trim().startsWith(meta.keyPrefix);
-}
+import { ProviderEditModal, type ProviderSavePayload } from './ProviderEditModal';
 
 export function ModelsManager() {
   const { config, updateAi } = useAppConfig();
@@ -57,14 +52,57 @@ export function ModelsManager() {
   };
 
   // ── Provider CRUD ────────────────────────────────────────────────────────
-  const saveProvider = (cfg: AiProviderConfig) => {
-    const exists = providers.some((p) => p.id === cfg.id);
-    const next = exists ? providers.map((p) => (p.id === cfg.id ? cfg : p)) : [...providers, cfg];
-    updateAi({ providers: next });
-    setEditing(null);
+  // M3: the plaintext key is POSTed to the backend here and never stored
+  // locally. The returned `serverProviderId` + `hasKey` are persisted instead.
+  const saveProvider = async (payload: ProviderSavePayload) => {
+    const { config: cfg, apiKey } = payload;
+    const backendUrl = config.backend.url;
+    try {
+      let serverProviderId = cfg.serverProviderId;
+      let hasKey = cfg.hasKey;
+      if (apiKey) {
+        if (cfg.serverProviderId) {
+          // Rotate existing key.
+          const updated = await api.updateProvider(backendUrl, cfg.serverProviderId, {
+            baseUrl: cfg.baseUrl,
+            apiKey,
+          });
+          serverProviderId = updated.id;
+          hasKey = updated.hasKey;
+        } else {
+          // Create new server-side key record.
+          const created = await api.createProvider(backendUrl, {
+            type: cfg.type as "openai" | "anthropic" | "openai_compatible",
+            baseUrl: cfg.baseUrl,
+            apiKey,
+          });
+          serverProviderId = created.id;
+          hasKey = created.hasKey;
+        }
+      }
+      const persisted: AiProviderConfig = { ...cfg, serverProviderId, hasKey };
+      const exists = providers.some((p) => p.id === persisted.id);
+      const next = exists
+        ? providers.map((p) => (p.id === persisted.id ? persisted : p))
+        : [...providers, persisted];
+      updateAi({ providers: next });
+      setEditing(null);
+    } catch (err) {
+      console.error('[ModelsManager] failed to save provider', err);
+      // Surface the error to the modal by leaving it open; a production UI would
+      // show a toast. Keep the modal editable so the user can retry.
+    }
   };
 
-  const deleteProvider = (cfg: AiProviderConfig) => {
+  const deleteProvider = async (cfg: AiProviderConfig) => {
+    // Best-effort server-side delete; local cleanup happens regardless.
+    if (cfg.serverProviderId) {
+      try {
+        await api.deleteProvider(config.backend.url, cfg.serverProviderId);
+      } catch (err) {
+        console.error('[ModelsManager] server-side provider delete failed', err);
+      }
+    }
     const next = providers.filter((p) => p.id !== cfg.id);
     // Clear any assignments that pointed at the deleted provider.
     const cleared = { ...assignments };
@@ -89,11 +127,12 @@ export function ModelsManager() {
 
   const runTest = (cfg: AiProviderConfig) => {
     setTestStates((s) => ({ ...s, [cfg.id]: 'testing' }));
-    // Lightweight client-side validation; real upstream check arrives with the
-    // backend key-storage plan.
+    // M3: the plaintext key lives server-side, so a client-side key-prefix
+    // check is no longer possible. Treat presence of a stored server key as the
+    // configured signal; a real upstream health check will arrive with the
+    // /ai/status provider-count enrichment.
     setTimeout(() => {
-      const meta = PROVIDER_META[cfg.type];
-      const ok = validateKey(meta, cfg.apiKey);
+      const ok = !!cfg.serverProviderId && (cfg.hasKey ?? false);
       setTestStates((s) => ({ ...s, [cfg.id]: ok ? 'ok' : 'fail' }));
     }, 350);
   };
@@ -126,8 +165,8 @@ export function ModelsManager() {
             Configure your AI with your own API keys
           </h1>
           <p className="text-sm text-slate-500 leading-relaxed">
-            Store API keys to enable AI providers in l1br3-prompt. Keys are kept locally in your
-            browser; encrypted server-side storage arrives with the backend integration.
+            Store API keys to enable AI providers in l1br3-prompt. Keys are encrypted at rest on
+            the local backend and never leave your machine in plaintext.
           </p>
         </header>
 
@@ -189,7 +228,7 @@ export function ModelsManager() {
                   meta={meta}
                   configured={cfg.configured}
                   enabled={cfg.enabled}
-                  apiKey={cfg.apiKey}
+                  hasKey={cfg.hasKey ?? false}
                   capabilities={cfg.capabilities}
                   models={cfg.models}
                   testState={testStates[cfg.id] ?? 'idle'}

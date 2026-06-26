@@ -7,10 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes.ai import router as ai_router
 from app.routes.categories import router as categories_router
+from app.routes.databases import router as databases_router
 from app.routes.generate import router as generate_router
 from app.routes.health import router as health_router
 from app.routes.mcp import router as mcp_router
 from app.routes.prompts import router as prompts_router
+from app.routes.providers import router as providers_router
 from app.routes.transform import router as transform_router
 
 
@@ -19,6 +21,7 @@ def _run_migrations() -> None:
         return
     import alembic.command
     import alembic.config
+
     cfg = alembic.config.Config("alembic.ini")
     alembic.command.upgrade(cfg, "head")
 
@@ -62,11 +65,14 @@ app.include_router(categories_router)
 app.include_router(ai_router)
 app.include_router(generate_router)
 app.include_router(transform_router)
+app.include_router(providers_router)
+app.include_router(databases_router)
 app.include_router(mcp_router)
 
 
 def run() -> None:
     import uvicorn
+
     uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=False)
 
 

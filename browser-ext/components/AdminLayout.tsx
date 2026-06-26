@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { BarChart3, Cpu, Minimize2, Settings, TerminalSquare, X } from 'lucide-react'
-import { PromptsTab } from './PromptsTab'
-import { ComposeTab } from './ComposeTab'
-import { SettingsTab } from './SettingsTab'
-import { AnalyticsPanel } from './AnalyticsPanel'
-import { ModelsManager } from './models/ModelsManager'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useState } from "react"
+import { BarChart3, Cpu, Database, Minimize2, Settings, TerminalSquare, X } from "lucide-react"
+import { PromptsTab } from "./PromptsTab"
+import { ComposeTab } from "./ComposeTab"
+import { SettingsTab } from "./SettingsTab"
+import { AnalyticsPanel } from "./AnalyticsPanel"
+import { ModelsManager } from "./models/ModelsManager"
+import { DatabaseManager } from "./databases/DatabaseManager"
+import { AnimatePresence, motion } from "framer-motion"
 
 async function closeAdminTab(): Promise<void> {
   try {
@@ -20,14 +21,16 @@ async function closeAdminTab(): Promise<void> {
   window.close()
 }
 
-type AdminView = 'workbench' | 'models'
+type AdminView = "workbench" | "models" | "databases"
 
 function initialView(): AdminView {
   try {
-    const param = new URLSearchParams(window.location.search).get('view')
-    return param === 'models' ? 'models' : 'workbench'
+    const param = new URLSearchParams(window.location.search).get("view")
+    if (param === "models") return "models"
+    if (param === "databases") return "databases"
+    return "workbench"
   } catch {
-    return 'workbench'
+    return "workbench"
   }
 }
 
@@ -45,7 +48,7 @@ export function AdminLayout() {
               <TerminalSquare size={18} className="text-white" />
             </div>
             <h1 className="font-bold text-lg tracking-tight text-slate-100">
-              l1br3-prompt{' '}
+              l1br3-prompt{" "}
               <span className="text-xs font-normal text-slate-500 ml-2 px-2 py-0.5 bg-slate-900 rounded-full border border-slate-800">
                 Admin Mode
               </span>
@@ -55,20 +58,28 @@ export function AdminLayout() {
           {/* View switcher */}
           <div className="flex items-center gap-1 ml-2 bg-slate-900/80 p-1 rounded-lg border border-slate-800">
             <button
-              onClick={() => setView('workbench')}
+              onClick={() => setView("workbench")}
               className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                view === 'workbench' ? 'bg-slate-800 text-slate-100' : 'text-slate-500 hover:text-slate-300'
+                view === "workbench" ? "bg-slate-800 text-slate-100" : "text-slate-500 hover:text-slate-300"
               }`}
             >
               Workbench
             </button>
             <button
-              onClick={() => setView('models')}
+              onClick={() => setView("models")}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                view === 'models' ? 'bg-slate-800 text-slate-100' : 'text-slate-500 hover:text-slate-300'
+                view === "models" ? "bg-slate-800 text-slate-100" : "text-slate-500 hover:text-slate-300"
               }`}
             >
               <Cpu size={13} /> Models
+            </button>
+            <button
+              onClick={() => setView("databases")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                view === "databases" ? "bg-slate-800 text-slate-100" : "text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              <Database size={13} /> Databases
             </button>
           </div>
         </div>
@@ -90,9 +101,13 @@ export function AdminLayout() {
         </div>
       </div>
 
-      {view === 'models' ? (
+      {view === "models" ? (
         <div className="flex-1 overflow-hidden">
           <ModelsManager />
+        </div>
+      ) : view === "databases" ? (
+        <div className="flex-1 overflow-hidden">
+          <DatabaseManager />
         </div>
       ) : (
         <div className="flex-1 flex overflow-hidden relative">
@@ -130,10 +145,10 @@ export function AdminLayout() {
                   className="absolute inset-0 bg-black/50 backdrop-blur-sm z-30"
                 />
                 <motion.div
-                  initial={{ x: '100%' }}
+                  initial={{ x: "100%" }}
                   animate={{ x: 0 }}
-                  exit={{ x: '100%' }}
-                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  exit={{ x: "100%" }}
+                  transition={{ type: "spring", damping: 25, stiffness: 200 }}
                   className="absolute top-0 right-0 bottom-0 w-[400px] bg-slate-950 border-l border-slate-800 shadow-2xl z-40 flex flex-col"
                 >
                   <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/50 backdrop-blur-md sticky top-0 z-10">

@@ -5,7 +5,6 @@ We test the underlying Python functions directly — no need to spin up stdio.
 The write-guard is tested by checking the PermissionError raised without the env var.
 """
 import json
-import os
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -14,8 +13,6 @@ from sqlalchemy.pool import StaticPool
 
 # L1BR3_TESTING is already set by conftest.py (imported before this module)
 from app.db.base import Base
-from app.db.engine import SessionLocal as _OriginalSessionLocal
-
 
 # ── In-memory DB fixture for MCP tests ────────────────────────────────────────
 

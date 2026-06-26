@@ -1,11 +1,9 @@
-from typing import Generic, TypeVar
+from typing import Any
 
 from pydantic import BaseModel
 
-T = TypeVar("T")
 
-
-class ApiResponse(BaseModel, Generic[T]):
+class ApiResponse[T](BaseModel):
     success: bool
     data: T | None = None
     error: str | None = None
@@ -16,5 +14,8 @@ class ApiResponse(BaseModel, Generic[T]):
         return cls(success=True, data=data, metadata=metadata)
 
     @classmethod
-    def fail(cls, error: str) -> "ApiResponse[None]":
+    def fail(cls, error: str) -> "ApiResponse[Any]":
+        # An error envelope carries no data, so the concrete payload type is
+        # irrelevant here — callers return this from endpoints typed for a
+        # specific ApiResponse[T] without a return-type mismatch.
         return cls(success=False, error=error)

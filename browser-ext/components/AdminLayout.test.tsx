@@ -14,6 +14,12 @@ vi.mock('./SettingsTab', () => ({
 vi.mock('./AnalyticsPanel', () => ({
   AnalyticsPanel: () => React.createElement('div', { 'data-testid': 'analytics-panel' }, 'Analytics'),
 }))
+vi.mock('./models/ModelsManager', () => ({
+  ModelsManager: () => React.createElement('div', { 'data-testid': 'models-manager' }, 'Models'),
+}))
+vi.mock('./databases/DatabaseManager', () => ({
+  DatabaseManager: () => React.createElement('div', { 'data-testid': 'db-manager' }, 'Databases'),
+}))
 vi.mock('framer-motion', () => ({
   motion: {
     div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) =>
@@ -67,5 +73,12 @@ describe('AdminLayout', () => {
     render(<AdminLayout />)
     fireEvent.click(screen.getByRole('button', { name: /settings/i }))
     expect(screen.getByTestId('settings-tab')).toBeTruthy()
+  })
+
+  it('switches to the Databases view when the Databases tab is clicked', () => {
+    render(<AdminLayout />)
+    expect(screen.queryByTestId('db-manager')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /databases/i }))
+    expect(screen.getByTestId('db-manager')).toBeTruthy()
   })
 })

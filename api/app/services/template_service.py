@@ -1,6 +1,5 @@
-from jinja2 import TemplateError, meta
+from jinja2 import StrictUndefined, meta
 from jinja2.sandbox import SandboxedEnvironment
-from jinja2 import StrictUndefined
 
 
 class TemplateService:

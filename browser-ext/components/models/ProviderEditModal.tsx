@@ -4,10 +4,22 @@ import { X, Save, Plus, ExternalLink } from 'lucide-react';
 import type { AiProviderConfig, ProviderType, ProviderCapability } from '../../types';
 import { ADDABLE_PROVIDER_TYPES, ALL_CAPABILITIES, PROVIDER_META } from './providerMeta';
 
+export interface ProviderSavePayload {
+  /** The local provider config to persist (no plaintext key lives here in M3). */
+  config: AiProviderConfig;
+  /**
+   * The newly-entered plaintext key, if any. Null means "leave the stored key
+   * unchanged" (edit mode, user did not retype). On create, this is the key
+   * that will be POSTed to the backend.
+   */
+  apiKey: string | null;
+}
+
 export interface ProviderEditModalProps {
   mode: 'create' | 'edit';
   initial?: AiProviderConfig;
-  onSave: (config: AiProviderConfig) => void;
+  /** Async so the parent can POST the key to the backend before closing. */
+  onSave: (payload: ProviderSavePayload) => Promise<void>;
   onClose: () => void;
 }
 
@@ -19,12 +31,15 @@ export function ProviderEditModal({ mode, initial, onSave, onClose }: ProviderEd
   const [type, setType] = useState<ProviderType>(initial?.type ?? 'openai');
   const [label, setLabel] = useState(initial?.label ?? PROVIDER_META.openai.label);
   const [baseUrl, setBaseUrl] = useState<string | null>(initial?.baseUrl ?? PROVIDER_META.openai.defaultBaseUrl);
-  const [apiKey, setApiKey] = useState(initial?.apiKey ?? '');
+  // M3: the plaintext key is never persisted locally. The field is empty in
+  // edit mode — a non-empty value means "rotate to this new key".
+  const [apiKey, setApiKey] = useState('');
   const [capabilities, setCapabilities] = useState<ProviderCapability[]>(
     initial?.capabilities ?? ['language'],
   );
   const [models, setModels] = useState<string[]>(initial?.models ?? []);
   const [modelInput, setModelInput] = useState('');
+  const [saving, setSaving] = useState(false);
 
   // When the type changes during create, refresh the type-derived defaults.
   const onTypeChange = (t: ProviderType) => {
@@ -52,22 +67,31 @@ export function ProviderEditModal({ mode, initial, onSave, onClose }: ProviderEd
   const removeModel = (m: string) => setModels((prev) => prev.filter((x) => x !== m));
 
   const meta = PROVIDER_META[type];
-  const canSave = label.trim().length > 0;
+  const typedKey = apiKey.trim();
+  // Create mode requires a key for keyed providers; edit mode allows leaving it blank.
+  const needsKey = meta.supportsKey && mode === 'create';
+  const canSave = label.trim().length > 0 && (!needsKey || typedKey.length > 0) && !saving;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!canSave) return;
-    const config: AiProviderConfig = {
-      id: initial?.id ?? newId(),
-      type,
-      label: label.trim(),
-      baseUrl: (baseUrl ?? '').trim() || null,
-      apiKey: apiKey.trim() || null,
-      enabled: initial?.enabled ?? true,
-      capabilities,
-      models,
-      configured: !!apiKey.trim() || !meta.supportsKey,
-    };
-    onSave(config);
+    setSaving(true);
+    try {
+      const config: AiProviderConfig = {
+        id: initial?.id ?? newId(),
+        type,
+        label: label.trim(),
+        baseUrl: (baseUrl ?? '').trim() || null,
+        serverProviderId: initial?.serverProviderId ?? null,
+        hasKey: initial?.hasKey ?? null,
+        enabled: initial?.enabled ?? true,
+        capabilities,
+        models,
+        configured: typedKey.length > 0 || !meta.supportsKey || (initial?.hasKey ?? false),
+      };
+      await onSave({ config, apiKey: typedKey.length > 0 ? typedKey : null });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -182,8 +206,9 @@ export function ProviderEditModal({ mode, initial, onSave, onClose }: ProviderEd
                 className="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 placeholder:text-slate-600 font-mono"
               />
               <p className="mt-1.5 text-[10px] text-slate-500 leading-relaxed">
-                Stored locally in your browser for now. Encrypted server-side key storage arrives
-                with the backend integration.
+                {mode === 'create'
+                  ? 'Stored encrypted on the l1br3 backend (never in your browser).'
+                  : 'Leave blank to keep the stored key; type a new value to rotate.'}
               </p>
             </div>
           )}
@@ -285,7 +310,7 @@ export function ProviderEditModal({ mode, initial, onSave, onClose }: ProviderEd
             disabled={!canSave}
             className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white text-xs font-medium rounded-lg transition-colors"
           >
-            <Save size={14} /> {mode === 'create' ? 'Add Provider' : 'Save Changes'}
+            <Save size={14} /> {saving ? 'Saving…' : mode === 'create' ? 'Add Provider' : 'Save Changes'}
           </button>
         </div>
       </motion.div>

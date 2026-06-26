@@ -176,6 +176,87 @@ class TestRegistry:
         assert isinstance(get_active_engine(), DatabaseEngine)
 
 
+# ── Registry store-precedence + reload (Task 6, M3) ──────────────────────────
+
+
+class TestRegistryStorePrecedence:
+    """M3: stored active connection > L1BR3_DB_PATH; L1BR3_DATABASE_URL wins over all."""
+
+    @staticmethod
+    def _reset():
+        set_active_engine(None)
+
+    def test_falls_through_to_db_path_when_no_store(self, monkeypatch, tmp_path):
+        from app.db.engines.registry import _resolve_engine
+
+        monkeypatch.delenv("L1BR3_DATABASE_URL", raising=False)
+        monkeypatch.setenv("L1BR3_DB_PATH", str(tmp_path / "fallback.db"))
+        monkeypatch.setenv("L1BR3_DATABASES_CONFIG", str(tmp_path / "absent.json"))
+        self._reset()
+        eng = _resolve_engine()
+        assert eng.url == f"sqlite:///{tmp_path}/fallback.db"
+
+    def test_store_active_overrides_db_path(self, monkeypatch, tmp_path):
+        from app.db import connection_store
+        from app.db.engines.registry import _resolve_engine
+
+        monkeypatch.delenv("L1BR3_DATABASE_URL", raising=False)
+        monkeypatch.setenv("L1BR3_DB_PATH", str(tmp_path / "fallback.db"))
+        monkeypatch.setenv("L1BR3_DATABASES_CONFIG", str(tmp_path / "dbs.json"))
+        cid = connection_store.add_connection(label="T", engine="sqlite", url=f"sqlite:///{tmp_path}/store_active.db")
+        assert connection_store.set_active(cid)
+        self._reset()
+        eng = _resolve_engine()
+        assert eng.url == f"sqlite:///{tmp_path}/store_active.db"
+
+    def test_store_active_wins_over_database_url_env(self, monkeypatch, tmp_path):
+        from app.db import connection_store
+        from app.db.engines.registry import _resolve_engine
+
+        monkeypatch.setenv("L1BR3_DATABASE_URL", f"sqlite:///{tmp_path}/env_loses.db")
+        monkeypatch.setenv("L1BR3_DATABASES_CONFIG", str(tmp_path / "dbs.json"))
+        cid = connection_store.add_connection(label="T", engine="sqlite", url=f"sqlite:///{tmp_path}/store_wins.db")
+        assert connection_store.set_active(cid)
+        self._reset()
+        eng = _resolve_engine()
+        assert eng.url == f"sqlite:///{tmp_path}/store_wins.db"
+
+    def test_reload_picks_up_new_active(self, monkeypatch, tmp_path):
+        from app.db import connection_store
+        from app.db.engines.registry import reload_active_engine
+
+        monkeypatch.delenv("L1BR3_DATABASE_URL", raising=False)
+        monkeypatch.setenv("L1BR3_DATABASES_CONFIG", str(tmp_path / "dbs.json"))
+        cid_a = connection_store.add_connection(label="A", engine="sqlite", url=f"sqlite:///{tmp_path}/reload_a.db")
+        connection_store.set_active(cid_a)
+        self._reset()
+        assert get_active_engine().url == f"sqlite:///{tmp_path}/reload_a.db"
+
+        cid_b = connection_store.add_connection(label="B", engine="sqlite", url=f"sqlite:///{tmp_path}/reload_b.db")
+        connection_store.set_active(cid_b)
+        reload_active_engine()
+        assert get_active_engine().url == f"sqlite:///{tmp_path}/reload_b.db"
+        # cleanup so other tests start fresh
+        set_active_engine(None)
+
+    def test_postgres_active_url_resolves_to_postgres_engine(self, monkeypatch, tmp_path):
+        # M2: a postgres active connection in the store resolves to PostgresEngine
+        # (was "raises until M2 lands" in M3; now the forward-ref is satisfied).
+        from app.db import connection_store
+        from app.db.engines.postgres import PostgresEngine
+        from app.db.engines.registry import _resolve_engine
+
+        monkeypatch.delenv("L1BR3_DATABASE_URL", raising=False)
+        monkeypatch.setenv("L1BR3_DATABASES_CONFIG", str(tmp_path / "dbs.json"))
+        cid = connection_store.add_connection(label="PG", engine="postgresql", url="postgresql://u:p@h:5432/db")
+        connection_store.set_active(cid)
+        self._reset()
+        eng = _resolve_engine()
+        assert isinstance(eng, PostgresEngine)
+        assert eng.dialect == "postgresql"
+        set_active_engine(None)
+
+
 # ── engine.py shim re-exports (Task 3) ───────────────────────────────────────
 
 

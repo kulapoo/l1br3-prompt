@@ -1,8 +1,10 @@
 import json
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
 
+from app.db.engine import get_db
 from app.schemas.ai import (
     GenerateRequest,
     ProcessTemplateRequest,
@@ -19,7 +21,7 @@ _template_service = TemplateService()
 
 
 @router.post("/generate")
-async def generate(request: Request, req: GenerateRequest):
+async def generate(request: Request, req: GenerateRequest, db: Session = Depends(get_db)):
     """
     Stream an AI-generated response as Server-Sent Events.
 
@@ -34,10 +36,9 @@ async def generate(request: Request, req: GenerateRequest):
         provider, label, provider_status = await resolve_provider(
             request,
             byok=req.byok,
+            db=db,
         )
     except ProviderError as exc:
-        from fastapi import HTTPException, status
-
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(exc),

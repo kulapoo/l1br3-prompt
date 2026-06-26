@@ -9,7 +9,8 @@ export interface ProviderCardProps {
   meta: ProviderMeta;
   configured: boolean;
   enabled: boolean;
-  apiKey?: string | null;
+  /** Whether the backend reports a stored key for this provider. */
+  hasKey?: boolean;
   capabilities?: ProviderCapability[];
   models?: string[];
   fixed?: boolean;
@@ -54,7 +55,7 @@ export function ProviderCard({
   meta,
   configured,
   enabled,
-  apiKey,
+  hasKey,
   capabilities,
   models,
   fixed,
@@ -109,7 +110,7 @@ export function ProviderCard({
                 <CapabilityPill key={c.id} cap={c} active={caps.includes(c.id)} />
               ))}
             </div>
-            {meta.supportsKey && <MaskedKey present={!!apiKey} />}
+            {meta.supportsKey && <MaskedKey present={!!hasKey} />}
           </div>
         )}
 

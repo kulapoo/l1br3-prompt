@@ -1,6 +1,11 @@
 import type {
   AiStatus,
   ByokRequestConfig,
+  DatabaseConnectionCreate,
+  DatabaseConnectionRead,
+  DatabaseConnectionUpdate,
+  DbEngine,
+  ConnectionTestResult,
   GenerateRequest,
   ProcessTemplateResponse,
   Prompt,
@@ -56,7 +61,7 @@ async function _consumeSSE(
   const decoder = new TextDecoder()
   let buf = ""
 
-  while (true) {
+  for (;;) {
     const { done, value } = await reader.read()
     if (done) break
 
@@ -100,8 +105,144 @@ export async function fetchAiStatus(baseUrl: string): Promise<AiStatus> {
   return json.data
 }
 
-// ── Streaming generate ────────────────────────────────────────────────────────
+// ── AI providers (encrypted server-side key storage) ─────────────────────────
 
+export interface ServerProviderRead {
+  id: string
+  type: "openai" | "anthropic" | "openai_compatible"
+  baseUrl: string | null
+  hasKey: boolean
+}
+
+export async function listProviders(baseUrl: string): Promise<ServerProviderRead[]> {
+  const res = await fetch(`${baseUrl}/api/v1/providers`)
+  if (!res.ok) throw new Error(`Providers request failed: ${res.statusText}`)
+  const json: ApiResponse<ServerProviderRead[]> = await res.json()
+  if (!json.success) throw new Error(json.error ?? "Unknown error from providers endpoint")
+  return json.data ?? []
+}
+
+/**
+ * Create a stored provider. The plaintext key is sent ONLY on this write call;
+ * subsequent reads return just `hasKey`. Returns the server row including its
+ * `id` (the `serverProviderId` the client persists locally).
+ */
+export async function createProvider(
+  baseUrl: string,
+  data: { type: ServerProviderRead["type"]; baseUrl?: string | null; apiKey: string },
+): Promise<ServerProviderRead> {
+  const res = await fetch(`${baseUrl}/api/v1/providers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok)
+    throw new Error(`Create provider failed (${res.status}): ${await res.text().catch(() => res.statusText)}`)
+  const json: ApiResponse<ServerProviderRead> = await res.json()
+  if (!json.success || !json.data) throw new Error(json.error ?? "Create provider error")
+  return json.data
+}
+
+export async function updateProvider(
+  baseUrl: string,
+  id: string,
+  data: { baseUrl?: string | null; apiKey?: string },
+): Promise<ServerProviderRead> {
+  const res = await fetch(`${baseUrl}/api/v1/providers/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok)
+    throw new Error(`Update provider failed (${res.status}): ${await res.text().catch(() => res.statusText)}`)
+  const json: ApiResponse<ServerProviderRead> = await res.json()
+  if (!json.success || !json.data) throw new Error(json.error ?? "Update provider error")
+  return json.data
+}
+
+export async function deleteProvider(baseUrl: string, id: string): Promise<void> {
+  const res = await fetch(`${baseUrl}/api/v1/providers/${id}`, { method: "DELETE" })
+  if (!res.ok)
+    throw new Error(`Delete provider failed (${res.status}): ${await res.text().catch(() => res.statusText)}`)
+  const json: ApiResponse<null> = await res.json()
+  if (!json.success) throw new Error(json.error ?? "Delete provider error")
+}
+
+// ── Database connections (M3) ─────────────────────────────────────────────────
+
+export async function listDatabases(baseUrl: string): Promise<DatabaseConnectionRead[]> {
+  const res = await fetch(`${baseUrl}/api/v1/databases`)
+  if (!res.ok) throw new Error(`Databases request failed: ${res.statusText}`)
+  const json: ApiResponse<DatabaseConnectionRead[]> = await res.json()
+  if (!json.success) throw new Error(json.error ?? "Unknown error from databases endpoint")
+  return json.data ?? []
+}
+
+export async function createDatabase(baseUrl: string, data: DatabaseConnectionCreate): Promise<DatabaseConnectionRead> {
+  const res = await fetch(`${baseUrl}/api/v1/databases`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok)
+    throw new Error(`Create database failed (${res.status}): ${await res.text().catch(() => res.statusText)}`)
+  const json: ApiResponse<DatabaseConnectionRead> = await res.json()
+  if (!json.success || !json.data) throw new Error(json.error ?? "Create database error")
+  return json.data
+}
+
+export async function updateDatabase(
+  baseUrl: string,
+  id: string,
+  data: DatabaseConnectionUpdate,
+): Promise<DatabaseConnectionRead> {
+  const res = await fetch(`${baseUrl}/api/v1/databases/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok)
+    throw new Error(`Update database failed (${res.status}): ${await res.text().catch(() => res.statusText)}`)
+  const json: ApiResponse<DatabaseConnectionRead> = await res.json()
+  if (!json.success || !json.data) throw new Error(json.error ?? "Update database error")
+  return json.data
+}
+
+export async function deleteDatabase(baseUrl: string, id: string): Promise<void> {
+  const res = await fetch(`${baseUrl}/api/v1/databases/${id}`, { method: "DELETE" })
+  if (!res.ok)
+    throw new Error(`Delete database failed (${res.status}): ${await res.text().catch(() => res.statusText)}`)
+  const json: ApiResponse<null> = await res.json()
+  if (!json.success) throw new Error(json.error ?? "Delete database error")
+}
+
+export async function testDatabase(
+  baseUrl: string,
+  data: { engine: DbEngine; url: string },
+): Promise<ConnectionTestResult> {
+  const res = await fetch(`${baseUrl}/api/v1/databases/test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(`Database test failed (${res.status}): ${await res.text().catch(() => res.statusText)}`)
+  const json: ApiResponse<ConnectionTestResult> = await res.json()
+  if (!json.success || !json.data) throw new Error(json.error ?? "Database test error")
+  return json.data
+}
+
+export async function activateDatabase(baseUrl: string, id: string): Promise<DatabaseConnectionRead> {
+  const res = await fetch(`${baseUrl}/api/v1/databases/${id}/activate`, {
+    method: "POST",
+  })
+  if (!res.ok)
+    throw new Error(`Activate database failed (${res.status}): ${await res.text().catch(() => res.statusText)}`)
+  const json: ApiResponse<DatabaseConnectionRead> = await res.json()
+  if (!json.success || !json.data) throw new Error(json.error ?? "Activate database error")
+  return json.data
+}
+
+// ── Streaming generate ────────────────────────────────────────────────────────
 /**
  * Stream an AI-generated response via SSE.
  *
@@ -232,7 +373,7 @@ export async function fetchPrompts(baseUrl: string, params?: FetchPromptsParams)
   if (params?.search) url.searchParams.set("search", params.search)
   if (params?.tag) url.searchParams.set("tag", params.tag)
   if (params?.category) url.searchParams.set("category", params.category)
-  if (params?.favorite != null) url.searchParams.set("favorite", String(params.favorite))
+  if (params?.favorite !== undefined) url.searchParams.set("favorite", String(params.favorite))
   if (params?.page) url.searchParams.set("page", String(params.page))
   if (params?.limit) url.searchParams.set("limit", String(params.limit))
 

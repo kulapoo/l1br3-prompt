@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 from pydantic.alias_generators import to_camel
 
 _camel = ConfigDict(alias_generator=to_camel, populate_by_name=True)
@@ -26,16 +26,31 @@ ByokProviderType = Literal["openai", "anthropic", "openai_compatible"]
 class ByokProviderConfig(BaseModel):
     """Per-request bring-your-own-key provider config.
 
-    The browser sends this so the backend can proxy to the user's own provider.
-    Milestone 3 will replace per-request key transport with encrypted server storage.
+    M3 wire shape (encrypted server-side key storage): the browser sends
+    ``provider_id`` referencing a stored ``ai_providers`` row; the backend
+    decrypts the key in-process and the plaintext never travels back over the
+    wire.
+
+    The legacy ``api_key`` field is retained as a deprecated, test-only escape
+    hatch (and for backward compatibility with any in-flight client). Exactly
+    one of ``provider_id`` / ``api_key`` must be set. ``type`` / ``base_url``
+    / ``model`` are accepted for the legacy direct-key path and ignored when
+    ``provider_id`` is set (the stored row is authoritative).
     """
 
     model_config = _camel
 
-    type: ByokProviderType
-    api_key: str
+    type: ByokProviderType | None = None
+    api_key: str | None = None
+    provider_id: str | None = None
     base_url: str | None = None
     model: str | None = None
+
+    @model_validator(mode="after")
+    def _require_one_key_source(self) -> "ByokProviderConfig":
+        if not self.provider_id and not self.api_key:
+            raise ValueError("Either providerId or apiKey must be supplied")
+        return self
 
 
 class GenerateRequest(BaseModel):

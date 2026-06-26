@@ -68,14 +68,14 @@ their stored key — with the key never leaving the local backend bound to
 | # | Milestone | Outcome | Status | Plan |
 |---|---|---|---|---|
 | 1 | BYOK inference works end-to-end | A user with an OpenAI/Anthropic key gets a streamed `/generate` or `/transform` response from their provider | complete | `docs/plans/multi-provider-models-manager.plan.md` (evidence: `docs/testing/multi-provider-models-manager.byok-inference.tdd.md`) |
-| 2 | Role-aware default routing | Chat default and Transformation default resolve independently; changing an assignment changes which provider serves each purpose | in-progress | `docs/plans/multi-provider-models-manager.role-routing.plan.md` |
-| 3 | Encrypted server-side key storage | BYOK keys live encrypted on the backend bound to 127.0.0.1 and never appear in plaintext in any response or log | pending | — |
+| 2 | Role-aware default routing | Chat default and Transformation default resolve independently; changing an assignment changes which provider serves each purpose | complete | `docs/plans/multi-provider-models-manager.role-routing.plan.md` |
+| 3 | Encrypted server-side key storage | BYOK keys live encrypted on the backend bound to 127.0.0.1 and never appear in plaintext in any response or log | complete | `docs/plans/multi-provider-models-manager.encrypted-key-storage.plan.md` (evidence: `docs/testing/m3-encrypted-key-storage.tdd.md`) |
 
 ## Open Questions
-- [ ] **Encryption key source** — the project requires "encrypted server-side key storage bound to 127.0.0.1" but not the key-derivation source. Options: machine-bound secret, user passphrase, OS keychain. Decision changes the F16 design materially.
+- [x] **Encryption key source** — **Resolved:** env var `L1BR3_MASTER_KEY`, auto-generated to `~/.l1br3/master.key` (0600) on first run, overridable via env. Fernet (symmetric, authenticated). See `docs/plans/multi-provider-models-manager.encrypted-key-storage.plan.md`.
 - [ ] **Fallback policy** — when no BYOK assignment exists for a purpose, should local Ollama be the implicit fallback, or should the absence be a hard error forcing the user to choose?
 - [ ] **OpenAI-compatible model listing** — pull from `/v1/models` when available, or manual entry only? Some compatible servers (e.g. vLLM, LM Studio) implement it, others don't.
-- [ ] **Request path** — do BYOK requests go browser→provider directly, or browser→API(127.0.0.1)→provider? The latter centralizes CORS/key exposure and reuses the existing SSE frame contract; the former avoids proxying. This shapes F14 and F16 together.
+- [x] **Request path** — **Resolved:** browser → API (127.0.0.1) → provider. Centralizes CORS/key exposure and reuses the existing SSE frame contract. Backend decrypts the key in-process; plaintext never travels back to the browser. See M3 plan.
 - [ ] **Error mapping contract** — what subset of provider errors (rate limits, auth failures, model-decommissioned) surface to the UI vs. get normalized to a generic frame?
 
 ## Risks
@@ -88,4 +88,4 @@ their stored key — with the key never leaving the local backend bound to
 | Scope creep into metering / OAuth / multi-device sync | Medium | Medium | Explicit out-of-scope list above; defer to future epics |
 
 ---
-*Status: DRAFT — requirements only. Implementation planning pending via /plan.*
+*Status: COMPLETE — all three milestones shipped (F14, F15, F16). Verify gate green: pytest 193, vitest 116, tsc clean, ruff/mypy clean on M3-touched files. Remaining open questions are non-blocking follow-ups.*
