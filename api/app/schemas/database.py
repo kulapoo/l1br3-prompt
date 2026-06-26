@@ -95,3 +95,27 @@ class ConnectionTestResponse(BaseModel):
 
     ok: bool
     error: str | None = None
+
+
+# ── Migration wizard (Milestone 4) — SSE frame shapes ────────────────────────
+#
+# These are NOT a response_model (the migrate endpoint returns a StreamingResponse);
+# they document the wire shape and give the route a single source of truth for the
+# camelCase payload, so the FE types and the route frames cannot drift.
+
+
+class MigrationMetaRead(BaseModel):
+    model_config = _camel
+
+    source_engine: str
+    target_engine: str
+    tables: list[str]
+
+
+class MigrationProgressRead(BaseModel):
+    model_config = _camel
+
+    table: str
+    phase: str
+    copied: int
+    total: int

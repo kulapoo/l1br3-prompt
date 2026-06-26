@@ -11,6 +11,7 @@ export interface ConnectionCardProps {
   testState?: TestState
   onTest?: () => void
   onActivate?: () => void
+  onMigrate?: () => void
   onEdit?: () => void
   onDelete?: () => void
 }
@@ -36,6 +37,7 @@ export function ConnectionCard({
   testState = "idle",
   onTest,
   onActivate,
+  onMigrate,
   onEdit,
   onDelete,
 }: ConnectionCardProps) {
@@ -82,6 +84,16 @@ export function ConnectionCard({
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md text-slate-300 border border-slate-800 hover:bg-slate-800 transition-colors"
           >
             Activate
+          </button>
+        )}
+        {!isActive && onMigrate && (
+          <button
+            type="button"
+            onClick={onMigrate}
+            title="Copy data from the active database into this one, then switch"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/10 transition-colors"
+          >
+            Migrate &amp; activate
           </button>
         )}
         {!meta.fixed && onTest && (

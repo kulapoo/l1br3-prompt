@@ -168,3 +168,20 @@ export interface ConnectionTestResult {
   ok: boolean
   error: string | null
 }
+
+// ── Migration wizard (M4) — SSE frame shapes ────────────────────────────────
+
+/** Announces the dialect pair + ordered copy plan (the first migrate frame). */
+export interface MigrationMeta {
+  sourceEngine: DbEngine
+  targetEngine: DbEngine
+  tables: string[]
+}
+
+/** Per-table progress during a migration. `phase` is "copying" or "done". */
+export interface MigrationProgress {
+  table: string
+  phase: "copying" | "done"
+  copied: number
+  total: number
+}

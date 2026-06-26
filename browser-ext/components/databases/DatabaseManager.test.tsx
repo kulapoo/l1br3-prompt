@@ -17,6 +17,7 @@ vi.mock("../../lib/api", () => ({
   updateDatabase: vi.fn(),
   deleteDatabase: vi.fn(),
   activateDatabase: vi.fn(),
+  migrateDatabase: vi.fn(),
 }))
 
 import * as api from "../../lib/api"
@@ -25,6 +26,7 @@ import { DatabaseManager } from "./DatabaseManager"
 const listDatabases = vi.mocked(api.listDatabases)
 const deleteDatabase = vi.mocked(api.deleteDatabase)
 const activateDatabase = vi.mocked(api.activateDatabase)
+const migrateDatabase = vi.mocked(api.migrateDatabase)
 
 function makeConfig(): AppConfig {
   return {
@@ -135,6 +137,37 @@ describe("DatabaseManager", () => {
     fireEvent.click(screen.getByRole("button", { name: /delete connection/i }))
     await waitFor(() => {
       expect(deleteDatabase).toHaveBeenCalledWith("http://localhost:8000", "pg-id")
+    })
+  })
+
+  it("opens the migration modal for a non-active connection", async () => {
+    renderManager()
+    await waitFor(() => expect(screen.getByText("Work Postgres")).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: /migrate & activate/i }))
+    // The modal confirm step exposes a "Migrate" action button (card has none).
+    expect(screen.getByRole("button", { name: /^migrate$/i })).toBeInTheDocument()
+  })
+
+  it("runs migrateDatabase on confirm and refreshes on success", async () => {
+    migrateDatabase.mockImplementation(async (_url, _id, opts) => {
+      opts.onMigrationMeta?.({ sourceEngine: "sqlite", targetEngine: "postgresql", tables: ["tags", "prompts"] })
+      opts.onProgress?.({ table: "tags", phase: "done", copied: 2, total: 2 })
+    })
+    renderManager()
+    await waitFor(() => expect(screen.getByText("Work Postgres")).toBeInTheDocument())
+    fireEvent.click(screen.getByRole("button", { name: /migrate & activate/i }))
+    fireEvent.click(screen.getByRole("button", { name: /^migrate$/i }))
+    await waitFor(() => {
+      expect(migrateDatabase).toHaveBeenCalledWith(
+        "http://localhost:8000",
+        "pg-id",
+        expect.any(Object),
+        expect.any(AbortSignal),
+      )
+    })
+    // On success the connection list is refreshed.
+    await waitFor(() => {
+      expect(listDatabases.mock.calls.length).toBeGreaterThanOrEqual(2)
     })
   })
 })

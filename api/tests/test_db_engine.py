@@ -257,6 +257,40 @@ class TestRegistryStorePrecedence:
         set_active_engine(None)
 
 
+# ── build_engine_for_url public dialect dispatch (Task 1, M4) ────────────────
+
+
+class TestBuildEngineForUrl:
+    """M4: public dialect dispatch. The migration wizard uses this to construct a
+    target engine WITHOUT disturbing the active singleton (``Depends(get_db)``
+    yields only the source session, so the target must be built out-of-band)."""
+
+    def test_postgres_url_returns_postgres_engine(self):
+        from app.db.engines.postgres import PostgresEngine
+        from app.db.engines.registry import build_engine_for_url
+
+        eng = build_engine_for_url("postgresql://u:p@localhost:5432/db")
+        assert isinstance(eng, PostgresEngine)
+        assert eng.dialect == "postgresql"
+
+    def test_sqlite_url_returns_sqlite_engine(self):
+        from app.db.engines.registry import build_engine_for_url
+
+        eng = build_engine_for_url("sqlite:///:memory:")
+        assert isinstance(eng, SqliteEngine)
+        assert eng.dialect == "sqlite"
+
+    def test_does_not_disturb_active_singleton(self):
+        from app.db.engines.registry import build_engine_for_url, get_active_engine, set_active_engine
+
+        set_active_engine(None)
+        active_before = get_active_engine()
+        # Build a throwaway target engine; the active singleton must be untouched.
+        _ = build_engine_for_url("sqlite:///:memory:")
+        assert get_active_engine() is active_before
+        set_active_engine(None)
+
+
 # ── engine.py shim re-exports (Task 3) ───────────────────────────────────────
 
 

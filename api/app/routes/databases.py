@@ -5,21 +5,35 @@ helper that converts the stored connection into the credential-free Read shape,
 and standard CRUD. Two extra non-CRUD endpoints:
   - ``POST /test``     — ping a URL with a throwaway engine (does not persist).
   - ``POST /{id}/activate`` — test → migrate → swap active → reload the registry.
+
+Milestone 4 adds:
+  - ``POST /{id}/migrate`` — streaming data copy (SSE) from the active source to
+    the target, then swap. On any failure the source stays active and the target
+    transaction is rolled back; the redacted error is emitted as a final frame.
 """
 
-from fastapi import APIRouter, HTTPException, status
+import json
+from collections.abc import Iterator
+
+from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.engine.url import make_url
+from starlette.concurrency import run_in_threadpool
 
 from app.db import connection_store
+from app.db.engines.registry import build_engine_for_url, get_active_engine, reload_active_engine
 from app.schemas.database import (
     ConnectionTestRequest,
     ConnectionTestResponse,
     DatabaseConnectionCreate,
     DatabaseConnectionRead,
     DatabaseConnectionUpdate,
+    MigrationMetaRead,
+    MigrationProgressRead,
 )
 from app.schemas.envelope import ApiResponse
-from app.services.db_connection_service import activate, test_connection
+from app.services.db_connection_service import _migrate_target, _safe_error, activate, test_connection
+from app.services.migration_service import MigrationEvent, MigrationMeta, TableProgress, iter_migration
 from app.services.security.redact import redact_url, url_has_password
 
 router = APIRouter(prefix="/api/v1/databases", tags=["databases"])
@@ -115,3 +129,110 @@ def activate_connection(id: str):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
     assert result.connection is not None
     return ApiResponse.ok(_to_read(result.connection))
+
+
+# ── Migration wizard (Milestone 4) ───────────────────────────────────────────
+
+
+class _StreamComplete(Exception):
+    """Sentinel raised by ``_advance`` when the migration generator is exhausted.
+
+    Using a custom sentinel (not ``StopIteration``) avoids PEP 479 ambiguity when
+    ``next(gen)`` is driven through ``run_in_threadpool`` from an async generator.
+    """
+
+
+def _advance(gen: Iterator[MigrationEvent]) -> MigrationEvent:
+    """``next(gen)`` that signals completion via ``_StreamComplete``."""
+    try:
+        return next(gen)
+    except StopIteration as exc:
+        raise _StreamComplete from exc
+
+
+def _meta_frame(meta: MigrationMeta) -> str:
+    payload = MigrationMetaRead(
+        source_engine=meta.source_engine, target_engine=meta.target_engine, tables=meta.tables
+    ).model_dump(by_alias=True)
+    return f"data: {json.dumps({'meta': payload})}\n\n"
+
+
+def _progress_frame(p: TableProgress) -> str:
+    payload = MigrationProgressRead(table=p.table, phase=p.phase, copied=p.copied, total=p.total).model_dump(
+        by_alias=True
+    )
+    return f"data: {json.dumps({'progress': payload})}\n\n"
+
+
+def _error_frame(message: str) -> str:
+    return f"data: {json.dumps({'error': message})}\n\n"
+
+
+@router.post("/{id}/migrate")
+async def migrate_connection(id: str, request: Request):
+    """Stream the data copy from the active source to connection ``id`` as SSE.
+
+    Sequence: load target → test → migrate target schema → stream the copy. The
+    active connection swaps ONLY after the copy commits (the ``{done}`` frame);
+    any failure emits a redacted ``{error}`` frame and leaves the source active.
+    On client disconnect the open target transaction is rolled back via
+    ``gen.close()``.
+    """
+    conn = connection_store.get_connection(id)
+    if conn is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connection not found")
+
+    # Pre-checks mirror activate: ping the target, then build its schema. Any
+    # failure here is a normal HTTP error (no stream opened, source untouched).
+    test = test_connection(conn.engine, conn.url)
+    if not test.ok:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=test.error or "Connection test failed")
+    migration = _migrate_target(conn.url)
+    if not migration.ok:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=migration.error or "Target schema migration failed",
+        )
+
+    source = get_active_engine()
+    target = build_engine_for_url(conn.url)
+
+    async def event_stream():
+        gen = iter_migration(source, target)
+        try:
+            meta = await run_in_threadpool(_advance, gen)
+        except _StreamComplete:
+            return  # nothing to copy (generator yielded only its meta then ended — not expected)
+        except Exception as exc:
+            yield _error_frame(_safe_error(exc, conn.url))
+            return
+        yield _meta_frame(meta)
+
+        while True:
+            if await request.is_disconnected():
+                gen.close()  # GeneratorExit → the target transaction rolls back
+                return
+            try:
+                event = await run_in_threadpool(_advance, gen)
+            except _StreamComplete:
+                # Copy committed cleanly — swap active + reload the registry.
+                connection_store.set_active(id)
+                reload_active_engine()
+                yield 'data: {"done": true}\n\n'
+                return
+            except Exception as exc:
+                yield _error_frame(_safe_error(exc, conn.url))
+                return
+            # Only TableProgress events follow the meta frame.
+            if isinstance(event, TableProgress):
+                yield _progress_frame(event)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

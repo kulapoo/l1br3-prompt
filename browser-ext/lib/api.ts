@@ -7,6 +7,8 @@ import type {
   DbEngine,
   ConnectionTestResult,
   GenerateRequest,
+  MigrationMeta,
+  MigrationProgress,
   ProcessTemplateResponse,
   Prompt,
   PromptCreate,
@@ -240,6 +242,85 @@ export async function activateDatabase(baseUrl: string, id: string): Promise<Dat
   const json: ApiResponse<DatabaseConnectionRead> = await res.json()
   if (!json.success || !json.data) throw new Error(json.error ?? "Activate database error")
   return json.data
+}
+
+// ── Streaming migration (M4) ─────────────────────────────────────────────────
+//
+// Migrate has its own SSE vocabulary ({meta:{sourceEngine,…}}, {progress},
+// {done}, {error}) distinct from /generate's ({meta:{provider}}, {chunk}). A
+// focused consumer keeps the AI-streaming path (_consumeSSE) untouched.
+
+async function _consumeMigrationSSE(
+  body: ReadableStream<Uint8Array>,
+  opts: {
+    onMigrationMeta?: (meta: MigrationMeta) => void
+    onProgress?: (progress: MigrationProgress) => void
+  },
+): Promise<void> {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ""
+
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buf += decoder.decode(value, { stream: true })
+    const lines = buf.split("\n")
+    buf = lines.pop() ?? ""
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue
+      const raw = line.slice(6).trim()
+      if (!raw) continue
+      try {
+        const data = JSON.parse(raw) as {
+          done?: boolean
+          error?: string
+          meta?: MigrationMeta
+          progress?: MigrationProgress
+        }
+        if (data.error) throw new Error(data.error)
+        if (data.done) return
+        if (data.meta && opts.onMigrationMeta) opts.onMigrationMeta(data.meta)
+        if (data.progress && opts.onProgress) opts.onProgress(data.progress)
+      } catch (err) {
+        if (err instanceof SyntaxError) continue
+        throw err
+      }
+    }
+  }
+}
+
+/**
+ * Stream the data copy from the active source to connection `id` via SSE.
+ *
+ * `onMigrationMeta` fires once at the start (dialect pair + copy plan);
+ * `onProgress` fires per table-batch. Resolves on `{done}` (the target is now
+ * active) or rejects on `{error}` / non-OK status (source stays active). Pass an
+ * `AbortSignal` to cancel — the backend rolls the open copy transaction back.
+ */
+export async function migrateDatabase(
+  baseUrl: string,
+  id: string,
+  opts: {
+    onMigrationMeta?: (meta: MigrationMeta) => void
+    onProgress?: (progress: MigrationProgress) => void
+  },
+  signal?: AbortSignal,
+): Promise<void> {
+  const res = await fetch(`${baseUrl}/api/v1/databases/${id}/migrate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    signal,
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText)
+    throw new Error(`Migrate database failed (${res.status}): ${text}`)
+  }
+  if (!res.body) throw new Error("No response body from migrate endpoint")
+
+  await _consumeMigrationSSE(res.body, opts)
 }
 
 // ── Streaming generate ────────────────────────────────────────────────────────

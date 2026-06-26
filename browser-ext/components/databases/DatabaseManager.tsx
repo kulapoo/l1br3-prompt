@@ -6,6 +6,7 @@ import { activateDatabase, createDatabase, deleteDatabase, listDatabases, update
 import { ENGINE_META, ENGINE_ORDER } from "./engineMeta"
 import { ConnectionCard, type TestState } from "./ConnectionCard"
 import { ConnectionEditModal, type ConnectionSavePayload } from "./ConnectionEditModal"
+import { MigrationModal } from "./MigrationModal"
 
 export function DatabaseManager() {
   const { config } = useAppConfig()
@@ -15,6 +16,7 @@ export function DatabaseManager() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ mode: "create" | "edit"; connection?: DatabaseConnectionRead } | null>(null)
+  const [migrating, setMigrating] = useState<DatabaseConnectionRead | null>(null)
   const [testStates, setTestStates] = useState<Record<string, TestState>>({})
 
   const load = useCallback(async () => {
@@ -89,6 +91,11 @@ export function DatabaseManager() {
     }
   }
 
+  const migrate = (conn: DatabaseConnectionRead) => {
+    setError(null)
+    setMigrating(conn)
+  }
+
   return (
     <div className="h-full overflow-y-auto bg-slate-950">
       <div className="max-w-3xl mx-auto px-6 py-8 space-y-8">
@@ -136,6 +143,7 @@ export function DatabaseManager() {
                     testState={testStates[conn.id] ?? "idle"}
                     onTest={() => runTest(conn)}
                     onActivate={() => activate(conn)}
+                    onMigrate={() => migrate(conn)}
                     onEdit={() => setEditing({ mode: "edit", connection: conn })}
                     onDelete={() => deleteConn(conn)}
                   />
@@ -157,8 +165,8 @@ export function DatabaseManager() {
         </section>
 
         <p className="text-[11px] text-slate-600 leading-relaxed">
-          Switching databases activates an empty, schema-ready target. Copying existing prompts across databases arrives
-          with the migration wizard.
+          Activating switches to a schema-ready target without copying data. Use “Migrate &amp; activate” to copy your
+          prompts across databases first.
         </p>
       </div>
 
@@ -168,6 +176,16 @@ export function DatabaseManager() {
           initial={editing.connection}
           onSave={saveConnection}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {migrating && (
+        <MigrationModal
+          connection={migrating}
+          meta={ENGINE_META[migrating.engine]}
+          backendUrl={backendUrl}
+          onMigrated={load}
+          onClose={() => setMigrating(null)}
         />
       )}
     </div>
