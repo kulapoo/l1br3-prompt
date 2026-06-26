@@ -12,15 +12,15 @@ Resolution precedence (M3 added the persisted-store tier):
   2. ``L1BR3_DATABASE_URL`` — explicit env override (CI / power user).
   3. ``L1BR3_DB_PATH`` / default — legacy SQLite-only knob, preserved bit-for-bit.
 
-Dialect dispatch lives in ``_engine_for_url``: SQLite now, PostgreSQL once M2's
-``PostgresEngine`` lands (until then a postgresql URL raises an actionable error
-rather than silently failing).
+Dialect dispatch lives in ``_engine_for_url``: ``postgresql*`` URLs resolve to
+``PostgresEngine`` (M2), everything else to ``SqliteEngine``.
 """
 
 import os
 
 from app.db import connection_store
 from app.db.engines.base import DatabaseEngine
+from app.db.engines.postgres import PostgresEngine
 from app.db.engines.sqlite import SqliteEngine
 
 _active_engine: DatabaseEngine | None = None
@@ -56,21 +56,7 @@ def _resolve_engine() -> DatabaseEngine:
 def _engine_for_url(url: str) -> DatabaseEngine:
     """Construct the concrete engine for a URL, branching on dialect."""
     if url.startswith("postgresql"):
-        # M2 forward reference: the postgres module is absent until M2 lands.
-        # importlib keeps mypy from analyzing a not-yet-present module (no
-        # import-not-found, no unused type: ignore), and the local annotation
-        # satisfies --strict's no-any-return.
-        try:
-            import importlib
-
-            postgres = importlib.import_module("app.db.engines.postgres")
-        except ImportError as exc:
-            raise ValueError(
-                "PostgreSQL engine is not available yet (Milestone 2). "
-                "Use SQLite, or set L1BR3_DATABASE_URL once M2 lands."
-            ) from exc
-        engine: DatabaseEngine = postgres.PostgresEngine(url)
-        return engine
+        return PostgresEngine(url)
     return SqliteEngine(url)
 
 

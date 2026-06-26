@@ -226,7 +226,8 @@ describe("TransformPanel", () => {
       type: "anthropic",
       label: "Anthropic",
       baseUrl: "https://api.anthropic.com/v1",
-      apiKey: "sk-ant",
+      serverProviderId: "srv-an",
+      hasKey: true,
       enabled: true,
       capabilities: ["language"],
       models: ["claude-3-5-sonnet-20241022"],
@@ -241,7 +242,7 @@ describe("TransformPanel", () => {
       await waitFor(() => expect(api.streamTransform).toHaveBeenCalled())
       return vi.mocked(api.streamTransform).mock.calls[0][1] as {
         model?: string | null
-        byok?: { type: string; apiKey: string; baseUrl: string | null; model: string } | null
+        byok?: { providerId: string; type: string; baseUrl: string | null; model: string } | null
       }
     }
 
@@ -263,8 +264,8 @@ describe("TransformPanel", () => {
 
       const body = await runTransform()
       expect(body.byok).toEqual({
+        providerId: "srv-an",
         type: "anthropic",
-        apiKey: "sk-ant",
         baseUrl: "https://api.anthropic.com/v1",
         model: "claude-3-5-sonnet-20241022",
       })
@@ -284,7 +285,8 @@ describe("TransformPanel", () => {
         type: "openai",
         label: "OpenAI",
         baseUrl: null,
-        apiKey: "sk-oa",
+        serverProviderId: "srv-oa",
+        hasKey: true,
         enabled: true,
         capabilities: ["language"],
         models: ["gpt-4o"],

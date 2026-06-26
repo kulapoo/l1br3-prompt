@@ -398,7 +398,8 @@ describe("ComposeTab — role-aware chat routing (M2)", () => {
     type: "openai",
     label: "OpenAI",
     baseUrl: null,
-    apiKey: "sk-secret",
+    serverProviderId: "srv-p1",
+    hasKey: true,
     enabled: true,
     capabilities: ["language"],
     models: ["gpt-4o"],
@@ -443,7 +444,7 @@ describe("ComposeTab — role-aware chat routing (M2)", () => {
       "http://localhost:8000",
       expect.objectContaining({
         model: "gpt-4o",
-        byok: { type: "openai", apiKey: "sk-secret", baseUrl: null, model: "gpt-4o" },
+        byok: { providerId: "srv-p1", type: "openai", baseUrl: null, model: "gpt-4o" },
       }),
       expect.any(Function),
       expect.any(Object),

@@ -97,7 +97,7 @@ branches. Exceeds the 80% minimum on the always-runnable unit surface.
 - [x] Search-parity harness passes (hard-parity exact-set + ≥95% recall both directions) against a live PG 16
 - [x] Repository contains no dialect-specific SQL — `PromptRepository.find_all` unchanged from M1
 - [x] Migrations 001/004 patched with dialect guards (audit finding surfaced, not silently forked)
-- [ ] PRD milestone #2 row status update — out of scope for code TDD; update in PRD file separately
+- [x] PRD milestone #2 row status update — `completed` with evidence pointer (this checkpoint)
 
 ## Known gaps / follow-ups
 

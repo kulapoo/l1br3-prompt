@@ -1,10 +1,15 @@
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import type { AppConfig } from '../../contexts/AppConfig'
 import type { Prompt } from '../../types'
 
 vi.mock('../../contexts/AppConfig', () => ({ useAppConfig: vi.fn() }))
+vi.mock('../../lib/api', () => ({
+  createProvider: vi.fn(),
+  updateProvider: vi.fn(),
+  deleteProvider: vi.fn().mockResolvedValue(undefined),
+}))
 vi.mock('framer-motion', () => ({
   motion: {
     div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) =>
@@ -113,7 +118,8 @@ describe('ModelsManager', () => {
             type: 'openai',
             label: 'OpenAI',
             baseUrl: 'https://api.openai.com/v1',
-            apiKey: 'sk-test',
+            serverProviderId: 'srv-p1',
+            hasKey: true,
             enabled: true,
             capabilities: ['language'],
             models: ['gpt-4o'],
@@ -134,7 +140,7 @@ describe('ModelsManager', () => {
     expect(screen.getByRole('button', { name: /delete configuration/i })).toBeInTheDocument()
   })
 
-  it('removes a provider and clears assignments pointing at it on delete', () => {
+  it('removes a provider and clears assignments pointing at it on delete', async () => {
     renderManager(
       makeConfig({
         providers: [
@@ -143,7 +149,8 @@ describe('ModelsManager', () => {
             type: 'openai',
             label: 'OpenAI',
             baseUrl: null,
-            apiKey: 'sk-test',
+            serverProviderId: 'srv-p1',
+            hasKey: true,
             enabled: true,
             capabilities: ['language'],
             models: ['gpt-4o'],
@@ -157,9 +164,11 @@ describe('ModelsManager', () => {
       }),
     )
     fireEvent.click(screen.getByRole('button', { name: /delete configuration/i }))
-    expect(updateAi).toHaveBeenCalledWith({
-      providers: [],
-      assignments: { chat: null, transform: null },
-    })
+    await waitFor(() =>
+      expect(updateAi).toHaveBeenCalledWith({
+        providers: [],
+        assignments: { chat: null, transform: null },
+      }),
+    )
   })
 })
