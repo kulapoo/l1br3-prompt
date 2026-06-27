@@ -78,7 +78,10 @@ in the test suite) and **a rotated or lost master key never crashes app boot**.
    URL-echo; add `.gitignore` entries for `databases.json` and `*.key`; retire
    the `connection_store.py:14-16` plaintext-deferral note.
 5. Database Manager UI surfaces `undecryptable` connections with a re-enter
-   affordance.
+   affordance, AND a **persistent sidebar banner** appears while the *active*
+   connection is in the SQLite-fallback state (mirrors the existing offline
+   banner pattern in `PromptsTab.tsx:82-92`). Driven by a new
+   `useActiveDatabase` React Query hook consumed by `Sidebar.tsx`.
 
 **Out of scope (deferred to F19)**
 
@@ -124,9 +127,15 @@ whole-file; see Alternatives below).
 | Legacy plaintext URL (F17 install) | `InvalidToken` -> used as plaintext -> re-saved encrypted on next write         |
 
 If the **active** connection is undecryptable, the registry falls back to
-`SqliteEngine.from_env()` so the app stays functional; the Database Manager UI
-shows the connection flagged with a "Re-enter credentials" affordance. Saving
-the connection again re-encrypts under the current master key.
+`SqliteEngine.from_env()` so the app stays functional. The Database Manager UI
+shows the connection flagged with a "Re-enter credentials" affordance, AND a
+persistent amber banner renders at the top of the sidebar shell (`Sidebar.tsx`,
+mirroring the `PromptsTab.tsx:82-92` offline-banner pattern) reading e.g.
+"DB 'prod' couldn't be decrypted — fell back to local SQLite. Re-enter
+credentials." The banner persists across tabs while the active connection
+remains undecryptable and clears once credentials are re-entered and the
+connection is re-activated. Saving the connection again re-encrypts under the
+current master key.
 
 ### Alternatives considered
 
@@ -148,6 +157,8 @@ the connection again re-encrypts under the current master key.
 | `api/app/schemas/database.py`                         | Add `undecryptable: bool = False` to `DatabaseConnectionRead`                       |
 | `api/app/db/engines/postgres.py`                      | Drop URL from `from_env` error message                                              |
 | `browser-ext/components/databases/ConnectionCard.tsx` | Amber flag + "Re-enter credentials" when `undecryptable`                            |
+| `browser-ext/components/Sidebar.tsx`                   | Persistent amber banner while the active connection is undecryptable (mirrors `PromptsTab.tsx:82-92`) |
+| `browser-ext/hooks/useActiveDatabase.ts` (new)         | React Query hook exposing the active connection incl. `undecryptable` for the sidebar |
 | `browser-ext/types/index.ts`                          | Add `undecryptable?: boolean` to `DatabaseConnectionRead`                           |
 | `.gitignore`                                          | `databases.json`, `*.key`                                                            |
 | `api/tests/test_connection_store.py`                  | New tests (see Testing strategy)                                                    |
@@ -176,6 +187,13 @@ New tests in `test_connection_store.py` (AAA pattern, security-focused):
 Plus `test_db_engine_postgres.py`: assert `from_env`'s error message no longer
 contains the URL string.
 
+Frontend (vitest):
+
+- `useActiveDatabase.test.ts` — returns the active connection's `undecryptable`
+  flag from `GET /api/v1/databases`.
+- `Sidebar.test.tsx` — renders the persistent amber banner when the active
+  connection is `undecryptable`; hides it otherwise.
+
 Existing leak tests (`test_database_routes.py`, `test_db_connection_service.py`)
 stay green — the Read shape is observably identical.
 
@@ -185,6 +203,8 @@ stay green — the Read shape is observably identical.
 - [ ] Existing F17 plaintext installs auto-upgrade silently on first load.
 - [ ] A rotated or lost master key never crashes boot — falls back to SQLite and
       flags the connection `undecryptable`.
+- [ ] While the active connection is undecryptable, a persistent sidebar banner
+      makes the SQLite-fallback state visible across all tabs.
 - [ ] No new secret-leak vectors; `from_env` no longer echoes the URL.
 - [ ] `just test` (both suites) + `just lint` + `pre-commit run --all-files`
       (mypy --strict, eslint, prettier, ruff, detect-secrets) all pass.
@@ -207,9 +227,11 @@ stay green — the Read shape is observably identical.
 - [x] Scope: include cross-host portability? -> **No**, deferred to F19.
 - [x] New master key or reuse F16's? -> **Reuse** (`get_master_key()`).
 - [x] Plaintext upgrade: transparent or explicit command? -> **Transparent**.
-- [ ] Error UX when the *active* connection is undecryptable: silent fallback
-      to SQLite + UI flag, or also emit a one-time notification? (Default: UI
-      flag only; revisit during implementation.)
+- [x] Error UX when the *active* connection is undecryptable? -> **Persistent
+      sidebar banner** while in fallback state (mirrors the `PromptsTab`
+      offline-banner pattern, `PromptsTab.tsx:82-92`), plus the `ConnectionCard`
+      amber flag. Surfaces "wrong DB" drift loudly instead of burying it in
+      settings.
 
 ---
 *Status: DRAFT — requirements + validated design. Implementation plan pending
