@@ -7,6 +7,7 @@ import { ENGINE_META, ENGINE_ORDER } from "./engineMeta"
 import { ConnectionCard, type TestState } from "./ConnectionCard"
 import { ConnectionEditModal, type ConnectionSavePayload } from "./ConnectionEditModal"
 import { MigrationModal } from "./MigrationModal"
+import { MasterKeyPanel } from "./MasterKeyPanel"
 
 export function DatabaseManager() {
   const { config } = useAppConfig()
@@ -168,6 +169,8 @@ export function DatabaseManager() {
           Activating switches to a schema-ready target without copying data. Use “Migrate &amp; activate” to copy your
           prompts across databases first.
         </p>
+
+        <MasterKeyPanel />
       </div>
 
       {editing && (

@@ -18,6 +18,7 @@ vi.mock("../../lib/api", () => ({
   deleteDatabase: vi.fn(),
   activateDatabase: vi.fn(),
   migrateDatabase: vi.fn(),
+  getMasterKeyStatus: vi.fn(),
 }))
 
 import * as api from "../../lib/api"
@@ -27,6 +28,7 @@ const listDatabases = vi.mocked(api.listDatabases)
 const deleteDatabase = vi.mocked(api.deleteDatabase)
 const activateDatabase = vi.mocked(api.activateDatabase)
 const migrateDatabase = vi.mocked(api.migrateDatabase)
+const getMasterKeyStatus = vi.mocked(api.getMasterKeyStatus)
 
 function makeConfig(): AppConfig {
   return {
@@ -87,6 +89,7 @@ function renderManager() {
 beforeEach(() => {
   vi.clearAllMocks()
   listDatabases.mockResolvedValue([DEFAULT_CONN, PG_CONN])
+  getMasterKeyStatus.mockResolvedValue({ present: false, envOverride: false })
 })
 
 describe("DatabaseManager", () => {
@@ -100,6 +103,12 @@ describe("DatabaseManager", () => {
       expect(screen.getByText("Default SQLite")).toBeInTheDocument()
       expect(screen.getByText("Work Postgres")).toBeInTheDocument()
     })
+  })
+
+  it("renders the MasterKeyPanel below the connections list", async () => {
+    renderManager()
+    expect(await screen.findByText("Master key")).toBeInTheDocument()
+    expect(getMasterKeyStatus).toHaveBeenCalledWith("http://localhost:8000")
   })
 
   it("shows the Active badge on the active connection", async () => {
