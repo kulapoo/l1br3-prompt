@@ -76,4 +76,15 @@ describe("useActiveDatabase", () => {
     const { result } = renderHook(() => useActiveDatabase(), { wrapper: makeWrapper() })
     await waitFor(() => expect(result.current.isUndecryptable).toBe(false))
   })
+
+  it("returns null active connection and no undecryptable flag when backend is not installed", () => {
+    vi.mocked(useAppConfig).mockReturnValue({
+      ...baseCtx,
+      config: { ...mockConfig, backend: { isInstalled: false, url: "" } },
+    } as unknown as ReturnType<typeof useAppConfig>)
+    const { result } = renderHook(() => useActiveDatabase(), { wrapper: makeWrapper() })
+    expect(result.current.activeConnection).toBeNull()
+    expect(result.current.isUndecryptable).toBe(false)
+    expect(listDatabases).not.toHaveBeenCalled()
+  })
 })
