@@ -11,8 +11,11 @@ and the API must know which DB to connect to *before* opening any connection.
 The file is read before any DB is touched. This mirrors the file-based
 ``master.key`` pattern in ``app.config``.
 
-Credentials live in plaintext here for the M3 functional MVP; M5 retrofits
-``app.services.security.crypto`` encryption onto the credential-bearing URL.
+Credential-bearing URLs are encrypted at rest with ``app.services.security.crypto``
+(F18), reusing the same Fernet master key as the BYOK provider keys (F16). Legacy
+F17 plaintext records auto-upgrade on first load (``_upgrade_legacy``); a token
+that won't decrypt under the current key (rotated ``L1BR3_MASTER_KEY``) is surfaced
+as ``StoredConnection.undecryptable`` rather than crashing boot.
 """
 
 import json
@@ -24,7 +27,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from cryptography.fernet import InvalidToken
+
 from app.db.engines.sqlite import DEFAULT_DB_PATH
+from app.services.security.crypto import decrypt, encrypt
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +47,7 @@ class StoredConnection:
     url: str
     created_at: datetime
     is_default: bool = False
+    undecryptable: bool = False
 
 
 # ── path + low-level file I/O ────────────────────────────────────────────────
@@ -111,7 +118,53 @@ def _seed_data() -> dict[str, Any]:
 
 def _load_or_seed() -> dict[str, Any]:
     raw = _read_file()
-    return raw if raw is not None else _seed_data()
+    if raw is None:
+        return _seed_data()
+    _upgrade_legacy(raw)
+    return raw
+
+
+# ── credential encryption (F18) ──────────────────────────────────────────────
+
+
+def _decrypt_or_legacy(value: str) -> tuple[str, bool]:
+    """Return ``(url, undecryptable)`` for a stored url field.
+
+    F18 stores urls as Fernet tokens (urlsafe-base64, which contains no ``:``).
+    F17 installs stored plaintext URLs (``scheme://...``). ``InvalidToken`` cannot
+    distinguish a legacy plaintext URL from a token encrypted under a different
+    (rotated) master key, so the ``://`` discriminator does: a value containing
+    ``://`` is legacy plaintext (upgraded on the next save by ``_upgrade_legacy``);
+    a token-shaped value that won't decrypt is genuinely undecryptable.
+    """
+    try:
+        return decrypt(value.encode()), False
+    except InvalidToken:
+        if "://" in value:
+            return value, False  # legacy plaintext URL (F17)
+        return "", True  # encrypted token we can't decrypt
+    except Exception:
+        return "", True
+
+
+def _upgrade_legacy(raw: dict[str, Any]) -> None:
+    """Re-encrypt legacy plaintext URLs (F17) in place; best-effort persist.
+
+    A record whose ``url`` still contains ``://`` is a plaintext F17 value —
+    encrypt it so the file contains no plaintext credentials after first load.
+    The save is best-effort: a write failure is logged but never breaks reads
+    (the in-memory value is still usable for this process).
+    """
+    changed = False
+    for record in raw.get("connections", []):
+        if isinstance(record, dict) and isinstance(record.get("url"), str) and "://" in record["url"]:
+            record["url"] = encrypt(record["url"]).decode()
+            changed = True
+    if changed:
+        try:
+            _save(raw)
+        except OSError as exc:
+            logger.warning("Failed to persist credential upgrade (%s); continuing.", exc)
 
 
 # ── record <-> dataclass ─────────────────────────────────────────────────────
@@ -122,7 +175,7 @@ def _to_record(conn: StoredConnection) -> dict[str, Any]:
         "id": conn.id,
         "label": conn.label,
         "engine": conn.engine,
-        "url": conn.url,
+        "url": encrypt(conn.url).decode(),
         "created_at": conn.created_at.isoformat(),
         "is_default": conn.is_default,
     }
@@ -134,14 +187,16 @@ def _parse_connections(raw: dict[str, Any]) -> list[StoredConnection]:
         if not isinstance(item, dict):
             continue
         try:
+            url, undecryptable = _decrypt_or_legacy(str(item["url"]))
             conns.append(
                 StoredConnection(
                     id=str(item["id"]),
                     label=str(item["label"]),
                     engine=str(item["engine"]),
-                    url=str(item["url"]),
+                    url=url,
                     created_at=datetime.fromisoformat(str(item["created_at"])),
                     is_default=bool(item.get("is_default", False)),
+                    undecryptable=undecryptable,
                 )
             )
         except (KeyError, ValueError, TypeError) as exc:
@@ -153,10 +208,7 @@ def _parse_connections(raw: dict[str, Any]) -> list[StoredConnection]:
 
 
 def list_connections() -> list[StoredConnection]:
-    raw = _read_file()
-    if raw is None:
-        return [_default_connection()]
-    return _parse_connections(raw)
+    return _parse_connections(_load_or_seed())
 
 
 def get_connection(id: str) -> StoredConnection | None:
@@ -188,7 +240,7 @@ def update_connection(id: str, *, label: str | None = None, url: str | None = No
             if label is not None:
                 record["label"] = label
             if url is not None:
-                record["url"] = url
+                record["url"] = encrypt(url).decode()
             _save(data)
             conns = _parse_connections(data)
             return next((c for c in conns if c.id == id), None)

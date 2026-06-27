@@ -160,3 +160,117 @@ class TestPersistence:
         assert got.engine == "postgresql"
         assert got.label == "PG"
         assert got.created_at is not None
+
+
+# Append at end of file. These exercise the F18 crypto boundary; existing
+# tests above stay unchanged (encrypt/decrypt round-trips preserve their
+# observable assertions).
+
+import os
+
+from app.services.security import crypto
+
+
+def _reset_crypto_singletons(monkeypatch, new_key: str) -> None:
+    """Simulate a rotated master key for the wrong-key tests."""
+    import app.config
+
+    monkeypatch.setenv("L1BR3_MASTER_KEY", new_key)
+    # Force both caches to rebuild from the new env value.
+    app.config._cached_master_key = None
+    crypto._fernet = None
+
+
+class TestEncryption:
+    def test_url_encrypted_at_rest_and_0600(self, monkeypatch, tmp_path):
+        import json
+        import stat
+
+        p = _set_path(monkeypatch, tmp_path)
+        password = "supersecret"
+        connection_store.add_connection(label="PG", engine="postgresql", url=f"postgresql://u:{password}@h:5432/db")
+        raw = p.read_text()
+        # The password must not appear anywhere on disk...
+        assert password not in raw
+        # ...and the stored url is a Fernet token, not a plaintext URL.
+        stored = json.loads(raw)["connections"][0]["url"]
+        assert stored != f"postgresql://u:{password}@h:5432/db"
+        assert "://" not in stored  # tokens are urlsafe-base64 (no '://')
+        # 0600 perms preserved through the encrypt path.
+        assert stat.S_IMODE(p.stat().st_mode) == 0o600
+
+    def test_round_trip_preserves_url(self, monkeypatch, tmp_path):
+        _set_path(monkeypatch, tmp_path)
+        url = "postgresql://u:p@h:5432/db"
+        cid = connection_store.add_connection(label="PG", engine="postgresql", url=url)
+        got = connection_store.get_connection(cid)
+        assert got is not None
+        assert got.url == url  # decrypt(round-trip) restores the plaintext URL
+        assert got.undecryptable is False
+
+    def test_legacy_plaintext_upgrades_transparently(self, monkeypatch, tmp_path):
+        import json
+
+        p = _set_path(monkeypatch, tmp_path)
+        password = "supersecret"
+        legacy_url = f"postgresql://u:{password}@h:5432/db"
+        # Write an F17-shaped plaintext file (no encryption).
+        p.write_text(
+            json.dumps(
+                {
+                    "connections": [
+                        {
+                            "id": "legacy-1",
+                            "label": "Legacy PG",
+                            "engine": "postgresql",
+                            "url": legacy_url,
+                            "created_at": "2026-01-01T00:00:00+00:00",
+                            "is_default": False,
+                        }
+                    ],
+                    "active_id": "legacy-1",
+                }
+            )
+        )
+
+        conns = connection_store.list_connections()
+
+        # The connection is usable (treated as legacy plaintext)...
+        assert len(conns) == 1
+        assert conns[0].url == legacy_url
+        assert conns[0].undecryptable is False
+        # ...and the file has been re-saved encrypted: no plaintext password remains.
+        raw = json.loads(p.read_text())
+        stored = raw["connections"][0]["url"]
+        assert password not in p.read_text()
+        assert "://" not in stored  # now a token
+
+    def test_wrong_master_key_marks_undecryptable(self, monkeypatch, tmp_path):
+        from cryptography.fernet import Fernet
+
+        _set_path(monkeypatch, tmp_path)
+        connection_store.add_connection(label="PG", engine="postgresql", url="postgresql://u:p@h:5432/db")
+        # Rotate the master key to something else and clear the cached singletons.
+        _reset_crypto_singletons(monkeypatch, Fernet.generate_key().decode())
+
+        conns = connection_store.list_connections()  # must NOT raise
+
+        # add_connection seeds the default SQLite conn too; focus on the PG conn,
+        # which carries the credential we care about.
+        pg = next((c for c in conns if c.label == "PG"), None)
+        assert pg is not None
+        assert pg.undecryptable is True
+
+    def test_update_reencrypts_url(self, monkeypatch, tmp_path):
+        import json
+
+        p = _set_path(monkeypatch, tmp_path)
+        cid = connection_store.add_connection(label="X", engine="sqlite", url="sqlite:///x.db")
+        updated = connection_store.update_connection(cid, url="sqlite:///y.db")
+        assert updated is not None
+        assert updated.url == "sqlite:///y.db"  # decrypt of the re-encrypted value
+        # And the new plaintext is not sitting on disk.
+        assert "sqlite:///y.db" not in p.read_text()
+        stored = json.loads(p.read_text())
+        rec = next(r for r in stored["connections"] if r["id"] == cid)
+        assert "://" not in rec["url"]
