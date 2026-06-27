@@ -14,7 +14,7 @@
 - [EPIC-3 — Transform (AI Prompt Rewriting)](#epic-3--transform-ai-prompt-rewriting) ✅
 - [EPIC-4 — Local AI Integration (Ollama)](#epic-4--local-ai-integration-ollama) ✅
 - [EPIC-5 — Multi-Provider Models Manager](#epic-5--multi-provider-models-manager) ✅
-- [EPIC-6 — Pluggable Database Store](#epic-6--pluggable-database-store) 🔵
+- [EPIC-6 — Pluggable Database Store](#epic-6--pluggable-database-store) ✅
 - [Dependency Graph](#dependency-graph)
 - [PRD Backlog](#prd-backlog)
 - [Contributing](#contributing)
@@ -35,11 +35,11 @@
 | EPIC-3 | Transform (AI Prompt Rewriting) | ✅     | 100%       |
 | EPIC-4 | Local AI Integration (Ollama)   | ✅     | 100%       |
 | EPIC-5 | Multi-Provider Models Manager   | ✅     | 100%       |
-| EPIC-6 | Pluggable Database Store        | 🔵     | ~80%       |
+| EPIC-6 | Pluggable Database Store        | ✅     | 100%       |
 
-> EPIC-6's functional MVP shipped (F17). Encrypted DB credential storage (F18)
-> is the remaining follow-up; cross-host master-key portability (F19) is tracked
-> behind it — see the EPIC below.
+> EPIC-6's functional MVP shipped (F17) and encrypted credential storage shipped
+> (F18). Cross-host master-key portability (F19) is the remaining follow-up —
+> see the EPIC below.
 
 ---
 
@@ -186,7 +186,8 @@ User-managed backend database engine and location. The hardcoded
 single-SQLite-file assumption is replaced with a pluggable store (default SQLite
 and PostgreSQL), a Database Manager settings page mirroring the Models Manager,
 and a streaming migration wizard. **Functional MVP shipped (F17); encrypted
-credential storage tracked as F18.**
+credential storage shipped (F18). Cross-host master-key portability tracked as
+F19.**
 
 - [x] **F17 — Pluggable database store** · _High_
       Engine abstraction behind a common interface (SQLite and PostgreSQL); Postgres
@@ -194,10 +195,12 @@ credential storage tracked as F18.**
       and connection-string, test-connection, set-active); migration wizard with
       streaming progress + rollback-on-failure.
       _PRD: [pluggable-database-store.prd.md](prds/pluggable-database-store.prd.md)_
-- [ ] **F18 — Encrypted DB credential storage** · _High_ · depends on F17
+- [x] **F18 — Encrypted DB credential storage** · _High_ · depends on F17
       Encrypt DB connection credentials at rest; redact secrets in error paths and
       migration logs. Security-hardening follow-up to F17 (mirrors F16's role in
-      EPIC-5).
+      EPIC-5). Whole-URL Fernet encryption in `connection_store` (reuses F16's
+      master key); transparent F17-plaintext upgrade; boot fallback to SQLite +
+      `undecryptable` flag; sidebar banner + connection-card flag.
       _PRD: [encrypted-db-credential-storage.prd.md](prds/encrypted-db-credential-storage.prd.md)_
 - [ ] **F19 — Cross-host master-key portability** · _Medium_ · depends on F18
       Resolve the `ai_providers.encrypted_api_key` ciphertext portability gap surfaced
@@ -235,13 +238,11 @@ Pluggable DB (EPIC-6)
 
 ## PRD Backlog
 
-Ordered by dependency readiness. Open a PRD (`/plan-prd`) against the first
-pending item its EPIC can unblock.
+Ordered by dependency readiness. The next pending item its EPIC can unblock.
 
-1. **F18** — Encrypted DB credential storage (security-hardening follow-up to F17) — _PRD drafted_
-2. **F19** — Cross-host master-key portability (depends on F18)
+1. **F19** — Cross-host master-key portability (depends on F18)
 
-_F17 (pluggable database store) shipped — removed from backlog._
+_F17 (pluggable database store) and F18 (encrypted DB credentials) shipped — removed from backlog._
 
 ---
 
@@ -257,15 +258,20 @@ Pick a pending `[ ]` item from an EPIC above, or from the [PRD Backlog](#prd-bac
 
 ### Opening a PRD
 
-1. Run `/plan-prd "<idea>"` → drafts `docs/prds/{name}.prd.md`.
+1. Brainstorm via the `brainstorming` skill → drafts `docs/prds/{name}.prd.md`.
 2. Set the PRD front-matter to reference the roadmap:
    ```yaml
    epic: EPIC-2 # from the Status Summary table
    feature: F1 # from the EPIC checklist (or "NEW" for an unlisted feature)
    ```
-3. Run `/plan` to produce the implementation plan. **Wait for maintainer
-   confirmation before writing code.**
+3. Produce the implementation plan via the `writing-plans` skill →
+   `docs/plans/{name}.plan.md`. **Wait for maintainer confirmation before
+   writing code.**
 4. Link the PRD next to the feature: `PRD: docs/prds/{name}.prd.md`.
+
+> The full skill chain (brainstorm → plan → implement → review → verify → finish
+> → status) is documented in
+> [`.opencode/rules/workflow.md`](../.opencode/rules/workflow.md).
 
 > **Adding a new feature?** Append it to the relevant EPIC's checklist with a new
 > `F##` id before opening its PRD. The roadmap is the index — don't let PRDs
@@ -324,11 +330,12 @@ rules tighten at `1.0.0`.
 | `v0.2`    | Provider breadth — EPIC-5 (Multi-Provider Models Manager)         | ✅ Shipped       |
 | `v0.3`    | Data portability — EPIC-6 (Pluggable Database Store)              | ✅ Shipped (MVP) |
 
-> v0.3 delivered data portability (F17). Encrypted credential storage (F18) is a
-> security-hardening follow-up, not gated on the release.
+> v0.3 delivered data portability (F17) plus at-rest encryption (F18).
+> Cross-host master-key portability (F19) is a follow-up, not gated on the
+> release.
 
 No firm calendar dates — the project ships when acceptance criteria are met and
-`/verify` passes. Watch [Releases](../../releases) for tagged builds.
+the verify gate is green. Watch [Releases](../../releases) for tagged builds.
 
 ---
 
@@ -339,8 +346,8 @@ No firm calendar dates — the project ships when acceptance criteria are met an
 | Metric               | Value                | Last updated |
 | -------------------- | -------------------- | ------------ |
 | Test suites          | 2 (api / ext)        | 2026-06-27   |
-| API test count       | 323                  | 2026-06-27   |
-| Extension test count | 147                  | 2026-06-27   |
+| API test count       | 332 (320 + 12 skipped) | 2026-06-27   |
+| Extension test count | 154                  | 2026-06-27   |
 | Latest release       | _none yet (pre-1.0)_ | 2026-06-27   |
 | License              | [MIT](../LICENSE)    | —            |
 
