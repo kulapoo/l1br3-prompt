@@ -18,12 +18,15 @@ M4 migration wizard can construct a target engine without disturbing the active
 singleton.
 """
 
+import logging
 import os
 
 from app.db import connection_store
 from app.db.engines.base import DatabaseEngine
 from app.db.engines.postgres import PostgresEngine
 from app.db.engines.sqlite import SqliteEngine
+
+logger = logging.getLogger(__name__)
 
 _active_engine: DatabaseEngine | None = None
 
@@ -44,6 +47,13 @@ def _resolve_engine() -> DatabaseEngine:
     if active_id is not None:
         conn = connection_store.get_connection(active_id)
         if conn is not None:
+            if conn.undecryptable:
+                logger.warning(
+                    "Active database connection %s is undecryptable (rotated "
+                    "L1BR3_MASTER_KEY?); falling back to the SQLite default.",
+                    active_id,
+                )
+                return SqliteEngine.from_env()
             return build_engine_for_url(conn.url)
 
     # 2. Explicit env override (CI / power user), only when no UI selection exists.

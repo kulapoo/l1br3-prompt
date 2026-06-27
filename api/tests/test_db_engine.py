@@ -304,3 +304,44 @@ class TestShimReExports:
         assert callable(engine_mod.get_db)
         assert callable(engine_mod.get_active_engine)
         assert callable(engine_mod.set_active_engine)
+
+
+# ── Registry fallback for undecryptable active connection (F18, Task 3) ───────
+
+
+def test_active_undecryptable_falls_back_to_sqlite(monkeypatch, tmp_path):
+    import json
+
+    from cryptography.fernet import Fernet
+
+    from app.db import connection_store
+    from app.db.engines.registry import _resolve_engine, set_active_engine
+    from app.db.engines.sqlite import SqliteEngine
+
+    p = tmp_path / "databases.json"
+    monkeypatch.setenv("L1BR3_DATABASES_CONFIG", str(p))
+    other = Fernet(Fernet.generate_key())
+    token = other.encrypt(b"postgresql://u:p@h:5432/db").decode()
+    p.write_text(
+        json.dumps(
+            {
+                "connections": [
+                    {
+                        "id": "x",
+                        "label": "Prod",
+                        "engine": "postgresql",
+                        "url": token,
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                        "is_default": False,
+                    }
+                ],
+                "active_id": "x",
+            }
+        )
+    )
+    set_active_engine(None)  # clear the cached singleton
+
+    engine = _resolve_engine()  # must NOT raise
+
+    assert isinstance(engine, SqliteEngine)
+    set_active_engine(None)
