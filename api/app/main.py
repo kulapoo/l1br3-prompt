@@ -13,6 +13,7 @@ from app.routes.health import router as health_router
 from app.routes.mcp import router as mcp_router
 from app.routes.prompts import router as prompts_router
 from app.routes.providers import router as providers_router
+from app.routes.security import router as security_router
 from app.routes.transform import router as transform_router
 
 
@@ -68,6 +69,7 @@ app.include_router(transform_router)
 app.include_router(providers_router)
 app.include_router(databases_router)
 app.include_router(mcp_router)
+app.include_router(security_router)
 
 
 def run() -> None:
