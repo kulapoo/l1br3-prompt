@@ -202,6 +202,19 @@ class TestPostgresEngine:
         with pytest.raises(ValueError, match="(?i)postgres"):
             PostgresEngine.from_env()
 
+    def test_from_env_rejects_non_postgres_without_echoing_url(self, monkeypatch):
+        from app.db.engines.postgres import PostgresEngine
+
+        # Non-postgres URL so the rejection branch (which used to interpolate the
+        # raw URL via {url!r}) fires. The secret token must NOT appear in the error.
+        secret = "mysql://u:supersecret@host/db"
+        monkeypatch.setenv("L1BR3_DATABASE_URL", secret)
+        with pytest.raises(ValueError) as exc:
+            PostgresEngine.from_env()
+        msg = str(exc.value)
+        assert "supersecret" not in msg
+        assert secret not in msg
+
 
 # ── Registry dialect dispatch (Task 4, unit) ─────────────────────────────────
 

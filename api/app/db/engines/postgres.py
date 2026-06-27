@@ -9,8 +9,8 @@ hand-rolled trigger mirror).
 Selection: the registry dispatches to this engine when ``L1BR3_DATABASE_URL`` is a
 ``postgresql*`` URL. The active engine is otherwise unchanged.
 
-Config: ``L1BR3_DATABASE_URL`` env only (M2) — no settings UI until M3, no
-encrypted credential storage until M5.
+Config: ``L1BR3_DATABASE_URL`` env, or the Database Manager (M3). DB URLs are
+encrypted at rest by ``connection_store`` (F18).
 """
 
 import os
@@ -140,8 +140,5 @@ class PostgresEngine:
         if not url:
             raise ValueError("PostgresEngine requires L1BR3_DATABASE_URL=postgresql://…")
         if not url.startswith("postgresql"):
-            raise ValueError(
-                f"PostgresEngine requires a PostgreSQL URL (L1BR3_DATABASE_URL={url!r}); "
-                "use SqliteEngine for sqlite:// URLs."
-            )
+            raise ValueError("PostgresEngine requires a PostgreSQL URL; use SqliteEngine for sqlite:// URLs.")
         return cls(url)
