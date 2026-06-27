@@ -1,6 +1,8 @@
 {
   "$schema": "https://opencode.ai/config.json",
 
+  "plugin": ["superpowers@git+https://github.com/obra/superpowers.git"],
+
   "command": {
     "dev": {
       "template": "Run `just dev` to start the API and extension dev servers. If you encounter errors, check package.json or Justfile for the correct command and fix any issues.",
