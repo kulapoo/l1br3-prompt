@@ -154,8 +154,11 @@ class TestEncryption:
 
         conns = connection_store.list_connections()  # must NOT raise
 
-        assert len(conns) == 1
-        assert conns[0].undecryptable is True
+        # add_connection seeds the default SQLite conn too; focus on the PG conn,
+        # which carries the credential we care about.
+        pg = next((c for c in conns if c.label == "PG"), None)
+        assert pg is not None
+        assert pg.undecryptable is True
 
     def test_update_reencrypts_url(self, monkeypatch, tmp_path):
         import json
@@ -607,7 +610,9 @@ def test_from_env_rejects_non_postgres_without_echoing_url(monkeypatch):
 
     from app.db.engines.postgres import PostgresEngine
 
-    secret = "postgresql://u:supersecret@host/db"
+    # A non-postgres URL is required to reach from_env's rejection branch
+    # (a `postgresql://` URL would build an engine and not raise at all).
+    secret = "mysql://u:supersecret@host/db"
     monkeypatch.setenv("L1BR3_DATABASE_URL", secret)
     with pytest.raises(ValueError) as exc:
         PostgresEngine.from_env()
