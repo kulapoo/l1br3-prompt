@@ -76,6 +76,7 @@ class DatabaseConnectionRead(BaseModel):
     masked_url: str
     is_active: bool = False
     is_default: bool = False
+    undecryptable: bool = False
 
 
 class ConnectionTestRequest(BaseModel):

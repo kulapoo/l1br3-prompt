@@ -47,9 +47,23 @@ def _to_read(conn: connection_store.StoredConnection, active_id: str | None = No
     """
     if active_id is None:
         active_id = connection_store.get_active_id()
-    # When nothing is persisted, the default SQLite is the implicit active
-    # (the registry falls through to it), so reflect that in the badge.
     effective_active = active_id if active_id else connection_store.DEFAULT_CONNECTION_ID
+    if conn.undecryptable:
+        # The url can't be decrypted — surface the flag without parsing garbage
+        # or echoing any secret material.
+        return DatabaseConnectionRead(
+            id=conn.id,
+            label=conn.label,
+            engine=conn.engine,
+            has_password=False,
+            host=None,
+            port=None,
+            database=None,
+            masked_url="***",
+            is_active=effective_active == conn.id,
+            is_default=conn.is_default,
+            undecryptable=True,
+        )
     try:
         u = make_url(conn.url)
         host, port, database = u.host, u.port, u.database
@@ -66,6 +80,7 @@ def _to_read(conn: connection_store.StoredConnection, active_id: str | None = No
         masked_url=redact_url(conn.url),
         is_active=effective_active == conn.id,
         is_default=conn.is_default,
+        undecryptable=False,
     )
 
 

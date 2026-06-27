@@ -414,6 +414,44 @@ class TestRouteMigrate:
         assert PASSWORD not in r.text
 
 
+def test_read_surfaces_undecryptable_flag(client, monkeypatch, tmp_path):
+    import json
+
+    from cryptography.fernet import Fernet
+
+    p = tmp_path / "databases.json"
+    monkeypatch.setenv("L1BR3_DATABASES_CONFIG", str(p))
+    # Encrypt under a DIFFERENT key than the conftest master key → undecryptable.
+    other = Fernet(Fernet.generate_key())
+    token = other.encrypt(b"postgresql://u:supersecret@h:5432/db").decode()
+    p.write_text(
+        json.dumps(
+            {
+                "connections": [
+                    {
+                        "id": "x",
+                        "label": "Prod",
+                        "engine": "postgresql",
+                        "url": token,
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                        "is_default": False,
+                    }
+                ],
+                "active_id": "x",
+            }
+        )
+    )
+
+    res = client.get("/api/v1/databases")
+    assert res.status_code == 200
+    conn = res.json()["data"][0]
+    assert conn["undecryptable"] is True
+    # No secret leakage through the masked url / password flag.
+    assert "supersecret" not in res.text
+    assert conn["maskedUrl"] == "***"
+    assert conn["hasPassword"] is False
+
+
 def _fake_conn(read_dict):
     """Build a StoredConnection from a Read dict for the mocked activate path."""
     from datetime import UTC, datetime
