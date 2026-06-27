@@ -25,3 +25,11 @@ def encrypt(plaintext: str) -> bytes:
 
 def decrypt(token: bytes) -> str:
     return _get_fernet().decrypt(token).decode()
+
+
+def clear_fernet_cache() -> None:
+    """Reset the cached Fernet so the next call rebuilds it from the (possibly
+    rotated) master key. Called by the master-key import route.
+    """
+    global _fernet
+    _fernet = None

@@ -44,3 +44,14 @@ def get_master_key() -> str:
         pass
     _cached_master_key = key
     return _cached_master_key
+
+
+def clear_master_key_cache() -> str | None:
+    """Reset the cached master key so the next ``get_master_key()`` call
+    re-reads env / disk. Returns the previous cached value (useful for logging).
+    Called by the master-key import route.
+    """
+    global _cached_master_key
+    previous = _cached_master_key
+    _cached_master_key = None
+    return previous
