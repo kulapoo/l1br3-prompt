@@ -37,9 +37,8 @@
 | EPIC-5 | Multi-Provider Models Manager   | ✅     | 100%       |
 | EPIC-6 | Pluggable Database Store        | ✅     | 100%       |
 
-> EPIC-6's functional MVP shipped (F17) and encrypted credential storage shipped
-> (F18). Cross-host master-key portability (F19) is the remaining follow-up —
-> see the EPIC below.
+> EPIC-6 complete: pluggable database store (F17), encrypted credential
+> storage (F18), and cross-host master-key portability (F19) all shipped.
 
 ---
 
@@ -186,8 +185,8 @@ User-managed backend database engine and location. The hardcoded
 single-SQLite-file assumption is replaced with a pluggable store (default SQLite
 and PostgreSQL), a Database Manager settings page mirroring the Models Manager,
 and a streaming migration wizard. **Functional MVP shipped (F17); encrypted
-credential storage shipped (F18). Cross-host master-key portability tracked as
-F19.**
+credential storage shipped (F18); cross-host master-key portability shipped
+(F19).**
 
 - [x] **F17 — Pluggable database store** · _High_
       Engine abstraction behind a common interface (SQLite and PostgreSQL); Postgres
@@ -202,12 +201,14 @@ F19.**
       master key); transparent F17-plaintext upgrade; boot fallback to SQLite +
       `undecryptable` flag; sidebar banner + connection-card flag.
       _PRD: [encrypted-db-credential-storage.prd.md](prds/encrypted-db-credential-storage.prd.md)_
-- [ ] **F19 — Cross-host master-key portability** · _Medium_ · depends on F18
+- [x] **F19 — Cross-host master-key portability** · _Medium_ · depends on F18
       Resolve the `ai_providers.encrypted_api_key` ciphertext portability gap surfaced
       during F17/F18: migrating a DB to a host whose `~/.l1br3/master.key` differs
-      leaves every BYOK key undecryptable. KDF (passphrase-derived key) or master-key
-      export/import flow.
-      _PRD: —_
+      leaves every BYOK key undecryptable. Master-key export/import flow: scrypt +
+      Fernet passphrase-protected JSON bundle, three endpoints under
+      `/api/v1/security/master-key/`, MasterKeyPanel in the Database Manager with
+      export/import modals + overwrite confirmation + env-override refusal.
+      _PRD: [cross-host-master-key-portability.prd.md](prds/cross-host-master-key-portability.prd.md)_
 
 ---
 
@@ -240,9 +241,8 @@ Pluggable DB (EPIC-6)
 
 Ordered by dependency readiness. The next pending item its EPIC can unblock.
 
-1. **F19** — Cross-host master-key portability (depends on F18)
-
-_F17 (pluggable database store) and F18 (encrypted DB credentials) shipped — removed from backlog._
+_All roadmap features shipped — backlog empty. (F17 pluggable database store,
+F18 encrypted DB credentials, F19 cross-host master-key portability.)_
 
 ---
 
@@ -330,9 +330,8 @@ rules tighten at `1.0.0`.
 | `v0.2`    | Provider breadth — EPIC-5 (Multi-Provider Models Manager)         | ✅ Shipped       |
 | `v0.3`    | Data portability — EPIC-6 (Pluggable Database Store)              | ✅ Shipped (MVP) |
 
-> v0.3 delivered data portability (F17) plus at-rest encryption (F18).
-> Cross-host master-key portability (F19) is a follow-up, not gated on the
-> release.
+> v0.3 delivered data portability (F17), at-rest encryption (F18), and
+> cross-host master-key portability (F19).
 
 No firm calendar dates — the project ships when acceptance criteria are met and
 the verify gate is green. Watch [Releases](../../releases) for tagged builds.
