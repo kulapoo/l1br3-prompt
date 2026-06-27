@@ -101,3 +101,15 @@ class TestImportFailures:
             raise AssertionError("expected BundleError")
         except BundleError as exc:
             assert "malformed bundle" in str(exc) or "must be a JSON object" in str(exc)
+
+    def test_non_canonical_scrypt_params_refused(self):
+        # Well-formed but non-canonical params must be rejected before any
+        # scrypt allocation happens. A malicious bundle could otherwise force a
+        # pathological memory allocation (e.g. N=2^30 ≈ 256 GB).
+        bundle = export_bundle(MASTER_KEY, "pw")
+        bundle["params"]["N"] = 32768  # 2^15 — valid power of two, non-canonical
+        try:
+            import_bundle(bundle, "pw")
+            raise AssertionError("expected BundleError")
+        except BundleError as exc:
+            assert "unsupported scrypt params" in str(exc)

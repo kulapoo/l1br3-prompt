@@ -33,6 +33,14 @@ _SCRYPT_P = 1
 _SALT_BYTES = 16
 _KEY_LEN = 32
 
+# Canonical (N, r, p) per bundle version. import_bundle refuses anything not
+# listed here even if otherwise well-formed, so a malicious bundle cannot
+# force an arbitrary scrypt allocation (e.g. N=2^30 → ~256 GB). Adding a new
+# entry is part of a deliberate version bump, never attacker-driven.
+_CANONICAL_PARAMS: dict[int, tuple[int, int, int]] = {
+    BUNDLE_VERSION: (_SCRYPT_N, _SCRYPT_R, _SCRYPT_P),
+}
+
 
 class BundleError(Exception):
     """Raised when a bundle is malformed, unsupported, or won't decrypt."""
@@ -87,6 +95,14 @@ def import_bundle(bundle: dict, passphrase: str) -> str:
         ciphertext = str(bundle["ciphertext"]).encode()
     except (KeyError, TypeError, ValueError) as exc:
         raise BundleError(f"malformed bundle: {exc}") from exc
+
+    # Defense-in-depth: even well-formed params must match a known canonical
+    # tuple for this bundle version. Prevents a malicious bundle from forcing
+    # a pathological scrypt allocation (e.g. N=2^30) that the version gate
+    # alone wouldn't catch.
+    expected = _CANONICAL_PARAMS.get(BUNDLE_VERSION)
+    if expected is None or (n, r, p) != expected:
+        raise BundleError(f"unsupported scrypt params for version {bundle.get('version')!r}")
 
     try:
         fernet = Fernet(_derive_fernet_key(passphrase, salt, n, r, p))
