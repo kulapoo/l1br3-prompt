@@ -151,6 +151,7 @@ export interface DatabaseConnectionRead {
   maskedUrl: string
   isActive: boolean
   isDefault: boolean
+  undecryptable?: boolean
 }
 
 export interface DatabaseConnectionCreate {
