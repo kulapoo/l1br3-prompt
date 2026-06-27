@@ -7,6 +7,10 @@ import type {
   DbEngine,
   ConnectionTestResult,
   GenerateRequest,
+  MasterKeyBundle,
+  MasterKeyExportResult,
+  MasterKeyImportResult,
+  MasterKeyStatus,
   MigrationMeta,
   MigrationProgress,
   ProcessTemplateResponse,
@@ -583,5 +587,40 @@ export async function processTemplate(
   if (!res.ok) throw new Error(`Template processing failed: ${res.statusText}`)
   const json: ApiResponse<ProcessTemplateResponse> = await res.json()
   if (!json.success || !json.data) throw new Error(json.error ?? "Template error")
+  return json.data
+}
+
+// ── Master-key portability (F19) ────────────────────────────────────────────
+
+export async function getMasterKeyStatus(baseUrl: string): Promise<MasterKeyStatus> {
+  const res = await fetch(`${baseUrl}/api/v1/security/master-key/status`, { method: "GET" })
+  const json = (await res.json()) as ApiResponse<MasterKeyStatus>
+  if (!json.success || !json.data) throw new Error(json.error ?? "Failed to read master-key status")
+  return json.data
+}
+
+export async function exportMasterKey(baseUrl: string, passphrase: string): Promise<MasterKeyExportResult> {
+  const res = await fetch(`${baseUrl}/api/v1/security/master-key/export`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ passphrase }),
+  })
+  const json = (await res.json()) as ApiResponse<MasterKeyExportResult>
+  if (!json.success || !json.data) throw new Error(json.error ?? "Failed to export master key")
+  return json.data
+}
+
+export async function importMasterKey(
+  baseUrl: string,
+  passphrase: string,
+  bundle: MasterKeyBundle,
+): Promise<MasterKeyImportResult> {
+  const res = await fetch(`${baseUrl}/api/v1/security/master-key/import`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ passphrase, bundle }),
+  })
+  const json = (await res.json()) as ApiResponse<MasterKeyImportResult>
+  if (!json.success || !json.data) throw new Error(json.error ?? "Failed to import master key")
   return json.data
 }

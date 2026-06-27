@@ -170,6 +170,31 @@ export interface ConnectionTestResult {
   error: string | null
 }
 
+// ── Master-key portability (F19) ─────────────────────────────────────────────
+
+export interface MasterKeyStatus {
+  present: boolean
+  envOverride: boolean
+}
+
+export interface MasterKeyBundle {
+  version: number
+  kdf: string
+  salt: string
+  params: { N: number; r: number; p: number }
+  ciphertext: string
+}
+
+export interface MasterKeyExportResult {
+  bundle: MasterKeyBundle
+  warning: string | null
+}
+
+export interface MasterKeyImportResult {
+  imported: boolean
+  previousKeyPresent: boolean
+}
+
 // ── Migration wizard (M4) — SSE frame shapes ────────────────────────────────
 
 /** Announces the dialect pair + ordered copy plan (the first migrate frame). */
