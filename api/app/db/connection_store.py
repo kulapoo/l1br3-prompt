@@ -44,6 +44,8 @@ class StoredConnection:
     id: str
     label: str
     engine: str
+    # When `undecryptable` is True, `url` is "" — callers must check the flag
+    # before using `url` (the registry and `_to_read` both do).
     url: str
     created_at: datetime
     is_default: bool = False

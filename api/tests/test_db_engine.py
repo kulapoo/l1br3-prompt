@@ -4,6 +4,8 @@ Covers: Protocols (base.py), SqliteEngine concrete impl, registry/active-engine
 accessor, and config precedence (L1BR3_DATABASE_URL > L1BR3_DB_PATH > default).
 """
 
+import logging
+
 import pytest
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session, sessionmaker
@@ -309,12 +311,11 @@ class TestShimReExports:
 # ── Registry fallback for undecryptable active connection (F18, Task 3) ───────
 
 
-def test_active_undecryptable_falls_back_to_sqlite(monkeypatch, tmp_path):
+def test_active_undecryptable_falls_back_to_sqlite(caplog, monkeypatch, tmp_path):
     import json
 
     from cryptography.fernet import Fernet
 
-    from app.db import connection_store
     from app.db.engines.registry import _resolve_engine, set_active_engine
     from app.db.engines.sqlite import SqliteEngine
 
@@ -341,7 +342,9 @@ def test_active_undecryptable_falls_back_to_sqlite(monkeypatch, tmp_path):
     )
     set_active_engine(None)  # clear the cached singleton
 
-    engine = _resolve_engine()  # must NOT raise
+    with caplog.at_level(logging.WARNING, logger="app.db.engines.registry"):
+        engine = _resolve_engine()  # must NOT raise
 
     assert isinstance(engine, SqliteEngine)
+    assert any("undecryptable" in rec.message and rec.levelno >= logging.WARNING for rec in caplog.records)
     set_active_engine(None)

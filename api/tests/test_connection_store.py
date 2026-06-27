@@ -12,6 +12,7 @@ import stat
 
 from app.db import connection_store
 from app.db.connection_store import StoredConnection
+from app.services.security import crypto
 
 
 def _set_path(monkeypatch, tmp_path):
@@ -166,10 +167,6 @@ class TestPersistence:
 # tests above stay unchanged (encrypt/decrypt round-trips preserve their
 # observable assertions).
 
-import os
-
-from app.services.security import crypto
-
 
 def _reset_crypto_singletons(monkeypatch, new_key: str) -> None:
     """Simulate a rotated master key for the wrong-key tests."""
@@ -274,3 +271,32 @@ class TestEncryption:
         stored = json.loads(p.read_text())
         rec = next(r for r in stored["connections"] if r["id"] == cid)
         assert "://" not in rec["url"]
+
+    def test_legacy_upgrade_is_idempotent(self, monkeypatch, tmp_path):
+        import json
+
+        p = _set_path(monkeypatch, tmp_path)
+        url = "postgresql://u:p@h:5432/db"
+        p.write_text(
+            json.dumps(
+                {
+                    "connections": [
+                        {
+                            "id": "x",
+                            "label": "X",
+                            "engine": "postgresql",
+                            "url": url,
+                            "created_at": "2026-01-01T00:00:00+00:00",
+                            "is_default": False,
+                        }
+                    ],
+                    "active_id": "x",
+                }
+            )
+        )
+        connection_store.list_connections()
+        first = json.loads(p.read_text())["connections"][0]["url"]
+        connection_store.list_connections()
+        second = json.loads(p.read_text())["connections"][0]["url"]
+        assert first == second
+        assert "://" not in first

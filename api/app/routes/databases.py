@@ -47,6 +47,8 @@ def _to_read(conn: connection_store.StoredConnection, active_id: str | None = No
     """
     if active_id is None:
         active_id = connection_store.get_active_id()
+    # When nothing is persisted, the default SQLite is the implicit active
+    # (the registry falls through to it), so reflect that in the badge.
     effective_active = active_id if active_id else connection_store.DEFAULT_CONNECTION_ID
     if conn.undecryptable:
         # The url can't be decrypted — surface the flag without parsing garbage
