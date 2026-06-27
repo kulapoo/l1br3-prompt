@@ -1,5 +1,5 @@
 import React from "react"
-import { CheckCircle2, Database, KeyRound, Pencil, Trash2, Zap } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Database, KeyRound, Pencil, Trash2, Zap } from "lucide-react"
 import type { DatabaseConnectionRead } from "../../types"
 import type { EngineMeta } from "./engineMeta"
 
@@ -16,11 +16,18 @@ export interface ConnectionCardProps {
   onDelete?: () => void
 }
 
-function Badge({ children, tone }: { children: React.ReactNode; tone: "emerald" | "indigo" | "slate" }) {
+function Badge({
+  children,
+  tone,
+}: {
+  children: React.ReactNode
+  tone: "emerald" | "indigo" | "slate" | "amber"
+}) {
   const tones = {
     emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
     indigo: "bg-indigo-500/10 text-indigo-400 border-indigo-500/30",
     slate: "bg-slate-900 text-slate-500 border-slate-800",
+    amber: "bg-amber-500/10 text-amber-400 border-amber-500/30",
   }
   return (
     <span
@@ -56,6 +63,11 @@ export function ConnectionCard({
             {isActive && (
               <Badge tone="indigo">
                 <CheckCircle2 size={9} /> Active
+              </Badge>
+            )}
+            {connection.undecryptable && (
+              <Badge tone="amber">
+                <AlertTriangle size={9} /> Undecryptable
               </Badge>
             )}
             {isDefault && <Badge tone="slate">Default</Badge>}

@@ -1,9 +1,6 @@
 import React from 'react';
-import {
-  PenLine,
-  Settings,
-  TerminalSquare } from
-'lucide-react';
+import { AlertTriangle, PenLine, Settings, TerminalSquare } from "lucide-react"
+import { useActiveDatabase } from "../hooks/useActiveDatabase"
 import { motion, AnimatePresence } from 'framer-motion';
 import { PromptsTab } from './PromptsTab';
 import { ComposeTab } from './ComposeTab';
@@ -17,6 +14,7 @@ export function Sidebar() {
   // reality rather than a stored toggle.
   useBackendHealth();
   const { activeTab, setActiveTab } = useAppConfig();
+  const { isUndecryptable, activeConnection } = useActiveDatabase();
   const tabs = [
   {
     id: 'compose',
@@ -86,6 +84,17 @@ export function Sidebar() {
           })}
         </div>
       </div>
+
+      {/* F18: persistent banner while the active DB connection is undecryptable. */}
+      {isUndecryptable && activeConnection && (
+        <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-start gap-2">
+          <AlertTriangle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-[10px] text-amber-300 leading-relaxed">
+            Database &ldquo;{activeConnection.label}&rdquo; couldn&apos;t be decrypted &mdash; fell
+            back to local SQLite. Re-enter its credentials in Databases.
+          </p>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden relative bg-slate-950">
