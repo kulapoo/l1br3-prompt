@@ -51,12 +51,14 @@ export function MasterKeyPanel() {
         Status: <span className="text-slate-200">{statusText}</span>
       </p>
       <p className="text-[11px] text-slate-500 leading-relaxed">
-        Move your encryption key between hosts so migrated DB credentials and provider keys decrypt
-        correctly. The export file is passphrase-protected; store it securely.
+        Move your encryption key between hosts so migrated DB credentials and provider keys decrypt correctly. The
+        export file is passphrase-protected; store it securely.
       </p>
 
       {error && (
-        <div className="px-3 py-2 rounded-md bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">{error}</div>
+        <div className="px-3 py-2 rounded-md bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300">
+          {error}
+        </div>
       )}
       {success && (
         <div className="px-3 py-2 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300">
@@ -177,8 +179,8 @@ function ExportModal({ onClose, onSubmit, busy }: ExportModalProps) {
   return (
     <ModalShell title="Export master key" onClose={onClose}>
       <p className="text-xs text-slate-400 leading-relaxed">
-        Choose a passphrase. The exported file is protected only by this passphrase — there is no
-        recovery if you forget it.
+        Choose a passphrase. The exported file is protected only by this passphrase — there is no recovery if you forget
+        it.
       </p>
       <LabeledInput label="Passphrase" type="password" value={passphrase} onChange={setPassphrase} />
       <LabeledInput label="Confirm passphrase" type="password" value={confirm} onChange={setConfirm} />
@@ -234,13 +236,13 @@ function ImportModal({ overwriteWarning, onClose, onSubmit, busy }: ImportModalP
     <ModalShell title="Import master key" onClose={onClose}>
       {overwriteWarning && (
         <div className="px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300">
-          This replaces your existing master key. Any provider keys or DB credentials encrypted under
-          the old key will need to be re-entered.
+          This replaces your existing master key. Any provider keys or DB credentials encrypted under the old key will
+          need to be re-entered.
         </div>
       )}
       <p className="text-xs text-slate-400 leading-relaxed">
-        Paste the contents of the exported <code>l1br3-master-key.json</code> file and enter the
-        passphrase you chose at export time.
+        Paste the contents of the exported <code>l1br3-master-key.json</code> file and enter the passphrase you chose at
+        export time.
       </p>
       <textarea
         data-testid="import-bundle-textarea"

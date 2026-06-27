@@ -5,7 +5,9 @@ import { exportMasterKey, getMasterKeyStatus, importMasterKey } from "../api"
 const BASE = "http://localhost:8000"
 
 function mockOnce(payload: unknown, ok = true): void {
-  const body = ok ? { success: true, data: payload, error: null } : { success: false, data: null, error: String(payload) }
+  const body = ok
+    ? { success: true, data: payload, error: null }
+    : { success: false, data: null, error: String(payload) }
   vi.mocked(globalThis.fetch).mockResolvedValueOnce({
     ok: true,
     json: async () => body,
