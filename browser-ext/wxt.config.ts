@@ -15,7 +15,6 @@ export default defineConfig({
     },
     host_permissions: [
       '*://*.chatgpt.com/*',
-      '*://*.claude.ai/*',
       '*://*.gemini.google.com/*',
       '<all_urls>'
     ]

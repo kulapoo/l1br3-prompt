@@ -44,8 +44,6 @@ build/
 # Logs
 *.log
 
-.claude/settings.local.json
-
 # l1br3 runtime secrets (live under ~/.l1br3; guard against a path pointed into the repo)
 databases.json
 *.key

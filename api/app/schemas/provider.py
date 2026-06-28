@@ -5,7 +5,7 @@ from pydantic.alias_generators import to_camel
 
 _camel = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
-ProviderType = Literal["openai", "anthropic", "openai_compatible"]
+ProviderType = Literal["openai", "openai_compatible"]
 
 
 class ProviderCreate(BaseModel):

@@ -221,16 +221,16 @@ describe("TransformPanel", () => {
   })
 
   describe("role-aware transform routing (M2)", () => {
-    const anthropicProvider: AppConfig["ai"]["providers"][number] = {
-      id: "p-an",
-      type: "anthropic",
-      label: "Anthropic",
-      baseUrl: "https://api.anthropic.com/v1",
-      serverProviderId: "srv-an",
+    const customProvider: AppConfig["ai"]["providers"][number] = {
+      id: "p-compat",
+      type: "openai_compatible",
+      label: "Custom",
+      baseUrl: "http://localhost:1234/v1",
+      serverProviderId: "srv-compat",
       hasKey: true,
       enabled: true,
       capabilities: ["language"],
-      models: ["claude-3-5-sonnet-20241022"],
+      models: ["local-model"],
       configured: true,
     }
 
@@ -253,10 +253,10 @@ describe("TransformPanel", () => {
           ...baseConfig,
           ai: {
             ...baseConfig.ai,
-            providers: [anthropicProvider],
+            providers: [customProvider],
             assignments: {
               chat: null,
-              transform: { providerId: "p-an", model: "claude-3-5-sonnet-20241022" },
+              transform: { providerId: "p-compat", model: "local-model" },
             },
           },
         },
@@ -264,12 +264,12 @@ describe("TransformPanel", () => {
 
       const body = await runTransform()
       expect(body.byok).toEqual({
-        providerId: "srv-an",
-        type: "anthropic",
-        baseUrl: "https://api.anthropic.com/v1",
-        model: "claude-3-5-sonnet-20241022",
+        providerId: "srv-compat",
+        type: "openai_compatible",
+        baseUrl: "http://localhost:1234/v1",
+        model: "local-model",
       })
-      expect(body.model).toBe("claude-3-5-sonnet-20241022")
+      expect(body.model).toBe("local-model")
     })
 
     it("omits byok and uses the local fallback when transform has no assignment", async () => {
@@ -298,18 +298,18 @@ describe("TransformPanel", () => {
           ...baseConfig,
           ai: {
             ...baseConfig.ai,
-            providers: [anthropicProvider, openAiProvider],
+            providers: [customProvider, openAiProvider],
             assignments: {
               chat: { providerId: "p-oa", model: "gpt-4o" },
-              transform: { providerId: "p-an", model: "claude-3-5-sonnet-20241022" },
+              transform: { providerId: "p-compat", model: "local-model" },
             },
           },
         },
       })
 
       const body = await runTransform()
-      expect(body.byok?.type).toBe("anthropic")
-      expect(body.model).toBe("claude-3-5-sonnet-20241022")
+      expect(body.byok?.type).toBe("openai_compatible")
+      expect(body.model).toBe("local-model")
     })
   })
 })

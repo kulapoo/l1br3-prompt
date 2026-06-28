@@ -115,7 +115,7 @@ export async function fetchAiStatus(baseUrl: string): Promise<AiStatus> {
 
 export interface ServerProviderRead {
   id: string
-  type: "openai" | "anthropic" | "openai_compatible"
+  type: "openai" | "openai_compatible"
   baseUrl: string | null
   hasKey: boolean
 }

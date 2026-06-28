@@ -41,7 +41,7 @@ export interface AppConfig {
     activeProvider: string | null
     selectedModel: string | null
     availableModels: string[]
-    /** User-configured BYOK providers (openai / anthropic / openai_compatible). */
+    /** User-configured BYOK providers (openai / openai_compatible). */
     providers: AiProviderConfig[]
     /** Per-role default model selection. */
     assignments: Record<ModelRole, ModelAssignment | null>

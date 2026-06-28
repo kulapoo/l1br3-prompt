@@ -59,41 +59,19 @@ describe("resolveRoleProvider", () => {
     expect(result.model).toBe("gpt-4o")
   })
 
-  it("resolves an Anthropic assignment including a custom baseUrl", () => {
-    const provider = makeProvider({
-      id: "p2",
-      type: "anthropic",
-      serverProviderId: "srv-2",
-      baseUrl: "https://custom.anthropic.com/v1",
-    })
-    const assignments = {
-      chat: null,
-      transform: { providerId: "p2", model: "claude-3-5-sonnet-20241022" },
-    }
-    const result = resolveRoleProvider("transform", [provider], assignments, {
-      fallbackModel: "fallback",
-    })
-    expect(result.byok).toEqual({
-      providerId: "srv-2",
-      type: "anthropic",
-      baseUrl: "https://custom.anthropic.com/v1",
-      model: "claude-3-5-sonnet-20241022",
-    })
-  })
-
   it("resolves the transform role independently from chat", () => {
     const openai = makeProvider({ id: "oa", type: "openai", serverProviderId: "srv-oa" })
-    const anthropic = makeProvider({ id: "an", type: "anthropic", serverProviderId: "srv-an" })
+    const compat = makeProvider({ id: "compat", type: "openai_compatible", serverProviderId: "srv-compat" })
     const assignments = {
       chat: { providerId: "oa", model: "gpt-4o" },
-      transform: { providerId: "an", model: "claude-3-5-sonnet-20241022" },
+      transform: { providerId: "compat", model: "local-model" },
     }
-    const chat = resolveRoleProvider("chat", [openai, anthropic], assignments, { fallbackModel: "f" })
-    const transform = resolveRoleProvider("transform", [openai, anthropic], assignments, {
+    const chat = resolveRoleProvider("chat", [openai, compat], assignments, { fallbackModel: "f" })
+    const transform = resolveRoleProvider("transform", [openai, compat], assignments, {
       fallbackModel: "f",
     })
     expect(chat.byok?.type).toBe("openai")
-    expect(transform.byok?.type).toBe("anthropic")
+    expect(transform.byok?.type).toBe("openai_compatible")
   })
 
   it("falls back to Ollama when the assigned provider id is not present", () => {

@@ -72,7 +72,7 @@ export function ModelsManager() {
         } else {
           // Create new server-side key record.
           const created = await api.createProvider(backendUrl, {
-            type: cfg.type as "openai" | "anthropic" | "openai_compatible",
+            type: cfg.type as "openai" | "openai_compatible",
             baseUrl: cfg.baseUrl,
             apiKey,
           });

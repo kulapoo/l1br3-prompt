@@ -1,8 +1,7 @@
 # AGENTS.md
 
 High-signal operating notes for OpenCode sessions. For architecture, file trees,
-and phase status see `CLAUDE.md` and `README.md`; for the gated dev process
-(`/plan → /tdd → /verify → /checkpoint`) see `.opencode/rules/workflow.md`
+and phase status see `README.md` and `docs/roadmap.md`;
 (auto-loaded via `opencode.jsonc`).
 
 ## Packages & toolchains
@@ -18,7 +17,7 @@ Three independently-versioned packages. Do not cross-wire tooling:
 dev/build/install through `npm`. To stay consistent, use **pnpm** for installs
 and tests (`pnpm install`, `pnpm test`); `npm run dev`/`build` also work because
 they read the same `package.json`. WXT entrypoints: `sidepanel`, `background`,
-`content`, and `admin` (the dashboard view — not listed in CLAUDE.md).
+`content`, and `admin` (the dashboard view — not listed in README.md).
 
 ## Commands (`just` from repo root)
 

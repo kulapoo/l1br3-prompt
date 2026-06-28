@@ -5,7 +5,6 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 from app.schemas.ai import ByokProviderConfig
-from app.services.ai.anthropic_provider import AnthropicProvider
 from app.services.ai.factory import resolve_provider
 from app.services.ai.openai_provider import OpenAIProvider
 from app.services.ai.provider import ProviderError
@@ -48,7 +47,6 @@ async def test_raises_when_ollama_down(httpx_mock: HTTPXMock):
 # ---- BYOK branch ----
 
 OPENAI_MODELS_URL = "https://api.openai.com/v1/models"
-ANTHROPIC_MODELS_URL = "https://api.anthropic.com/v1/models"
 
 
 async def test_byok_openai_resolves_when_reachable(httpx_mock: HTTPXMock):
@@ -64,19 +62,6 @@ async def test_byok_openai_resolves_when_reachable(httpx_mock: HTTPXMock):
     assert label == "byok:openai"
     assert status.reachable is True
     assert "gpt-4o" in status.models
-
-
-async def test_byok_anthropic_resolves_when_reachable(httpx_mock: HTTPXMock):
-    httpx_mock.add_response(
-        url=ANTHROPIC_MODELS_URL,
-        json={"data": [{"id": "claude-3-5-sonnet-20241022"}]},
-    )
-    async with httpx.AsyncClient() as client:
-        req = _FakeRequest(client)
-        byok = ByokProviderConfig(type="anthropic", api_key="sk-ant")
-        provider, label, status = await resolve_provider(req, byok=byok)
-    assert isinstance(provider, AnthropicProvider)
-    assert label == "byok:anthropic"
 
 
 async def test_byok_openai_compatible_uses_custom_base_url(httpx_mock: HTTPXMock):

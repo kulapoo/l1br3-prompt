@@ -8,7 +8,7 @@ export default defineContentScript({
       const selectors = [
         'textarea[data-id="root"]',  // ChatGPT
         '#prompt-textarea',           // ChatGPT alt
-        '[contenteditable="true"]',   // Claude, Gemini
+        '[contenteditable="true"]',   // Gemini + others
         'textarea',
       ]
       for (const sel of selectors) {

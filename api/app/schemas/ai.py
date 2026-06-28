@@ -20,7 +20,7 @@ class AiStatusResponse(BaseModel):
     provider: Literal["ollama"] | None = None
 
 
-ByokProviderType = Literal["openai", "anthropic", "openai_compatible"]
+ByokProviderType = Literal["openai", "openai_compatible"]
 
 
 class ByokProviderConfig(BaseModel):

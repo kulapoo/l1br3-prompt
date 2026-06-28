@@ -16,11 +16,8 @@ from pytest_httpx import HTTPXMock
 
 OPENAI_MODELS_URL = "https://api.openai.com/v1/models"
 OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
-ANTHROPIC_MODELS_URL = "https://api.anthropic.com/v1/models"
-ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages"
 
 SECRET_OPENAI_KEY = "sk-secret-openai-key-12345"
-SECRET_ANT_KEY = "sk-ant-secret-67890"
 
 
 def _seed_provider(client, *, type="openai", base_url=None, api_key=SECRET_OPENAI_KEY) -> str:
@@ -38,15 +35,6 @@ def _openai_sse(chunks: list[str]) -> str:
     for c in chunks:
         body += f"data: {json.dumps({'choices': [{'delta': {'content': c}}]})}\n\n"
     body += "data: [DONE]\n\n"
-    return body
-
-
-def _anthropic_sse(chunks: list[str]) -> str:
-    body = ""
-    for c in chunks:
-        body += "event: content_block_delta\n"
-        body += f"data: {json.dumps({'delta': {'type': 'text_delta', 'text': c}})}\n\n"
-    body += 'event: message_stop\ndata: {"type": "message_stop"}\n\n'
     return body
 
 
@@ -69,30 +57,6 @@ def test_generate_byok_openai_streams_full_frame_sequence(client, httpx_mock: HT
     assert frames[0] == {"meta": {"provider": "byok:openai"}}
     assert frames[1] == {"chunk": "Hel"}
     assert frames[2] == {"chunk": "lo"}
-    assert frames[-1] == {"done": True}
-
-
-def test_generate_byok_anthropic_streams_full_frame_sequence(client, httpx_mock: HTTPXMock):
-    """Anthropic BYOK via provider_id: meta(byok:anthropic) → chunk* → done."""
-    pid = _seed_provider(client, type="anthropic", api_key=SECRET_ANT_KEY)
-    httpx_mock.add_response(
-        url=ANTHROPIC_MODELS_URL,
-        json={"data": [{"id": "claude-3-5-sonnet-20241022"}]},
-    )
-    httpx_mock.add_response(url=ANTHROPIC_MESSAGES_URL, text=_anthropic_sse(["world"]))
-
-    r = client.post(
-        "/api/v1/generate",
-        json={
-            "prompt": "hi",
-            "model": "claude-3-5-sonnet-20241022",
-            "byok": {"providerId": pid},
-        },
-    )
-    assert r.status_code == 200
-    frames = _frames(r.text)
-    assert frames[0] == {"meta": {"provider": "byok:anthropic"}}
-    assert {"chunk": "world"} in frames
     assert frames[-1] == {"done": True}
 
 
@@ -154,29 +118,6 @@ def test_generate_byok_api_key_never_appears_in_response_payload(client, httpx_m
         json={"prompt": "hi", "byok": {"providerId": pid}},
     )
     assert SECRET_OPENAI_KEY not in r.text
-
-
-def test_generate_byok_anthropic_key_never_appears_in_response_payload(client, httpx_mock: HTTPXMock):
-    pid = _seed_provider(client, type="anthropic", api_key=SECRET_ANT_KEY)
-    httpx_mock.add_response(
-        url=ANTHROPIC_MODELS_URL,
-        json={"data": [{"id": "claude-3-5-sonnet-20241022"}]},
-    )
-    httpx_mock.add_response(
-        url=ANTHROPIC_MESSAGES_URL,
-        text=_anthropic_sse(["safe response"]),
-    )
-
-    r = client.post(
-        "/api/v1/generate",
-        json={
-            "prompt": "hi",
-            "model": "claude-3-5-sonnet-20241022",
-            "byok": {"providerId": pid},
-        },
-    )
-    assert r.status_code == 200
-    assert SECRET_ANT_KEY not in r.text
 
 
 def test_transform_byok_openai_streams_through_route(client, httpx_mock: HTTPXMock):

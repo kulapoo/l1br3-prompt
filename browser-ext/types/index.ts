@@ -81,15 +81,14 @@ export interface AiStatus {
 
 // ── AI Models Manager ────────────────────────────────────────────────────────
 
-export type ProviderType = "openai" | "anthropic" | "openai_compatible" | "ollama"
+export type ProviderType = "openai" | "openai_compatible" | "ollama"
 export type ProviderCapability = "language" | "embedding" | "tts" | "stt"
 export type ModelRole = "chat" | "transform"
 
 /**
- * A user-configured AI provider. BYOK providers (openai / anthropic /
- * openai_compatible) live in `AppConfig.ai.providers`. The fixed Ollama provider
- * is derived from the existing connection flag and is never stored in the
- * providers array.
+ * A user-configured AI provider. BYOK providers (openai / openai_compatible)
+ * live in `AppConfig.ai.providers`. The fixed Ollama provider is derived from
+ * the existing connection flag and is never stored in the providers array.
  *
  * M3: the API key is stored encrypted server-side and referenced by
  * `serverProviderId`. The plaintext key never persists in browser storage;

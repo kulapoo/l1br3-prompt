@@ -27,17 +27,6 @@ export const PROVIDER_META: Record<ProviderType, ProviderMeta> = {
     supportsKey: true,
     docsUrl: 'https://platform.openai.com/api-keys',
   },
-  anthropic: {
-    type: 'anthropic',
-    label: 'Anthropic',
-    description: 'Claude models via the official Anthropic API.',
-    defaultBaseUrl: 'https://api.anthropic.com',
-    keyPlaceholder: 'sk-ant-...',
-    keyPrefix: 'sk-ant-',
-    defaultModels: ['claude-3-5-sonnet-latest', 'claude-3-5-haiku-latest', 'claude-3-opus-latest'],
-    supportsKey: true,
-    docsUrl: 'https://console.anthropic.com/settings/keys',
-  },
   openai_compatible: {
     type: 'openai_compatible',
     label: 'OpenAI Compatible',
@@ -66,7 +55,7 @@ export const ALL_CAPABILITIES: { id: ProviderCapability; label: string }[] = [
 ];
 
 /** Provider types the user can add a configuration for. */
-export const ADDABLE_PROVIDER_TYPES: ProviderType[] = ['openai', 'anthropic', 'openai_compatible'];
+export const ADDABLE_PROVIDER_TYPES: ProviderType[] = ['openai', 'openai_compatible'];
 
 /** Order in which provider cards are displayed in Section 2. */
-export const PROVIDER_ORDER: ProviderType[] = ['ollama', 'openai', 'anthropic', 'openai_compatible'];
+export const PROVIDER_ORDER: ProviderType[] = ['ollama', 'openai', 'openai_compatible'];

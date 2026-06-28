@@ -1,18 +1,12 @@
 """
-l1br3-prompt MCP server — exposes stored prompts as tools for Claude Desktop / ChatGPT.
+l1br3-prompt MCP server — exposes stored prompts as tools for MCP-compatible
+AI assistants (e.g. ChatGPT).
 
 Run via:
     l1br3-mcp            (after `uv tool install .` or from the virtual-env)
     python -m app.mcp_server
 
-Add to Claude Desktop's claude_desktop_config.json:
-    {
-      "mcpServers": {
-        "l1br3-prompt": {
-          "command": "l1br3-mcp"
-        }
-      }
-    }
+Register the server with your MCP client using the `l1br3-mcp` command.
 
 Write tools (create_prompt, delete_prompt) are disabled by default.
 Set L1BR3_MCP_ALLOW_WRITE=1 to enable them.
@@ -36,9 +30,7 @@ _ALLOW_WRITE = os.environ.get("L1BR3_MCP_ALLOW_WRITE", "0") == "1"
 
 def _require_write() -> None:
     if not _ALLOW_WRITE:
-        raise PermissionError(
-            "Write operations are disabled. Set L1BR3_MCP_ALLOW_WRITE=1 to enable."
-        )
+        raise PermissionError("Write operations are disabled. Set L1BR3_MCP_ALLOW_WRITE=1 to enable.")
 
 
 # ── Read-only tool implementations (callable without MCP transport) ───────────

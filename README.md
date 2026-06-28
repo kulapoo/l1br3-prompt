@@ -106,7 +106,7 @@ l1br3-prompt/
 
 ### Bring Your Own Key (BYOK)
 
-For non-local providers (OpenAI, Anthropic, OpenAI-compatible endpoints), open the
+For non-local providers (OpenAI, OpenAI-compatible endpoints), open the
 **Models Manager** in Admin Mode and add your API keys. Keys are stored locally in
 your browser; encrypted server-side storage arrives in a follow-up.
 

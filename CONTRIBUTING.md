@@ -76,24 +76,6 @@ just build   # extension builds
 
 Mark the feature as completed (with a note) once acceptance criteria are met — not just when tests are green.
 
-## Development Workflow
-
-This project uses a planning toolchain for agile development. Each step in the development loop maps to a command:
-
-| Step | Command | Purpose |
-|------|---------|---------|
-| Check status | `/sprint-status` | Read the sprint plan (no writes) |
-| Pick + mark in-flight | `/sprint-update F# in-progress` | Persist status before coding starts |
-| Understand | `/capability` | Deep-dive constraints and interfaces |
-| Plan | `/plan` | Step-by-step plan; waits for confirmation |
-| Code | `/tdd` | Test-driven RED-GREEN-REFACTOR loop |
-| Verify | `/verify` | Build + test + lint + typecheck loop |
-| Update status | `/sprint-update F# completed "note"` | Persist completion after acceptance criteria met |
-
-Additional commands:
-- `/sprint-plan` — decompose a phase into sprints with features and acceptance criteria
-- `/pr-review` — code review for local changes or a GitHub PR
-
 ## Testing
 
 - **API**: `just test-api` — pytest covering routes, services, and repositories
@@ -105,4 +87,4 @@ The project follows language-specific conventions. Pre-commit hooks handle forma
 
 ## Project Structure
 
-See [CLAUDE.md](CLAUDE.md) for the full repository layout, architecture details, and phase status.
+See [README.md](README.md) for the full repository layout, architecture details, and phase status.

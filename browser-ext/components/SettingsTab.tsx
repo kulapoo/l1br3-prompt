@@ -308,7 +308,7 @@ export function SettingsTab() {
                 <ExternalLink size={12} className="text-slate-400" />
               </button>
               <p className="mt-2 text-[10px] text-slate-500 leading-relaxed">
-                Open the Models Manager in Admin Mode to add API keys (OpenAI, Anthropic, OpenAI
+                Open the Models Manager in Admin Mode to add API keys (OpenAI, OpenAI
                 Compatible) and assign default models.
               </p>
             </div>

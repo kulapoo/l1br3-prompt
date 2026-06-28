@@ -3,7 +3,6 @@ from fastapi import Request
 from sqlalchemy.orm import Session
 
 from app.schemas.ai import ByokProviderConfig
-from app.services.ai.anthropic_provider import AnthropicProvider
 from app.services.ai.ollama import OllamaProvider
 from app.services.ai.openai_provider import OpenAIProvider
 from app.services.ai.provider import AIProvider, ProviderError, ProviderStatus
@@ -81,7 +80,5 @@ async def _byok_provider(
 
 
 def _construct(http: httpx.AsyncClient, type_: str, api_key: str, base_url: str | None) -> tuple[AIProvider, str]:
-    if type_ == "anthropic":
-        return AnthropicProvider(http, api_key=api_key, base_url=base_url), "byok:anthropic"
     # openai + openai_compatible share the OpenAI Chat Completions contract.
     return OpenAIProvider(http, api_key=api_key, base_url=base_url), f"byok:{type_}"

@@ -153,7 +153,7 @@ Auto-detect Ollama, Jinja2 template processing, MCP server, streaming to sidebar
 
 ## EPIC-5 — Multi-Provider Models Manager
 
-Bring-your-own-key providers (OpenAI, Anthropic, OpenAI-compatible) alongside
+Bring-your-own-key providers (OpenAI, OpenAI-compatible) alongside
 Local (Ollama), with per-purpose Default Model Assignments. **Frontend, backend
 provider wiring, role-aware routing, and encrypted server-side key storage all
 shipped.**
@@ -167,7 +167,7 @@ shipped.**
 'models' }`.
       _PRD: [multi-provider-models-manager.prd.md](prds/multi-provider-models-manager.prd.md)_
 - [x] **F14 — Real upstream provider classes** · _High_ · depends on F13
-      Backend OpenAI / Anthropic / OpenAI-compatible provider implementations behind
+      Backend OpenAI / OpenAI-compatible provider implementations behind
       a common interface (streaming, error mapping, model listing). _PRD: —_
 - [x] **F15 — Role-aware `resolve_provider`** · _High_ · depends on F14
       Route Chat → Chat default model, Transformation → Transformation default model;

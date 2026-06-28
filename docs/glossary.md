@@ -8,9 +8,9 @@ Common terms and acronyms used in l1br3-prompt.
 |------|---------|---------|
 | **MVP** | Minimum Viable Product | Phase 2: Sidebar UI |
 | **WXT** | Cross-browser extension framework | Frontend tooling |
-| **MCP** | Model Context Protocol | Integration with AI assistants/ChatGPT |
+| **MCP** | Model Context Protocol | Integration with MCP-compatible AI assistants |
 | **FTS5** | Full-Text Search | SQLite search capability |
-| **LLM** | Large Language Model | Ollama + BYOK providers (OpenAI, Anthropic, …) |
+| **LLM** | Large Language Model | Ollama + BYOK providers (OpenAI, …) |
 | **AI** | Artificial Intelligence | Transform/generation engines |
 | **BYOK** | Bring Your Own Key | User-supplied provider API keys |
 

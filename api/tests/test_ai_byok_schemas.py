@@ -35,15 +35,15 @@ def test_generate_request_rejects_byok_without_api_key():
         GenerateRequest.model_validate({"prompt": "hi", "byok": {"type": "openai"}})
 
 
-def test_byok_accepts_openai_compatible_and_anthropic_types():
-    for t in ("openai", "anthropic", "openai_compatible"):
+def test_byok_accepts_openai_and_openai_compatible_types():
+    for t in ("openai", "openai_compatible"):
         cfg = ByokProviderConfig(type=t, api_key="k")  # type: ignore[arg-type]
         assert cfg.type == t
 
 
 def test_transform_request_accepts_byok_field():
-    req = TransformRequest.model_validate({"prompt": "hi", "byok": {"type": "anthropic", "apiKey": "sk-ant"}})
+    req = TransformRequest.model_validate({"prompt": "hi", "byok": {"type": "openai", "apiKey": "sk-xxx"}})
     assert req.byok is not None
-    assert req.byok.type == "anthropic"
+    assert req.byok.type == "openai"
     assert req.byok.base_url is None
     assert req.byok.model is None

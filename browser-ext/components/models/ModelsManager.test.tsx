@@ -65,11 +65,11 @@ describe('ModelsManager', () => {
     expect(screen.getByText('Provider Configuration')).toBeInTheDocument()
   })
 
-  it('shows the fixed Ollama card plus 3 addable empty cards', () => {
+  it('shows the fixed Ollama card plus 2 addable empty cards', () => {
     renderManager(makeConfig())
     expect(screen.getByText('Ollama (Local)')).toBeInTheDocument()
-    // Three BYOK provider types with no config -> each offers Add Configuration.
-    expect(screen.getAllByRole('button', { name: /add configuration/i })).toHaveLength(3)
+    // Two BYOK provider types with no config -> each offers Add Configuration.
+    expect(screen.getAllByRole('button', { name: /add configuration/i })).toHaveLength(2)
   })
 
   it('warns when required default models are missing', () => {
